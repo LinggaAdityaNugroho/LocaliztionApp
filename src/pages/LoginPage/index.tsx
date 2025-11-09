@@ -5,12 +5,10 @@ import { Link } from "react-router-dom";
 export function LoginPage() {
   return (
     <AuthLayout
-      titleCard="Login"
-      descriptionContent="Enter your email below to login"
-      titleButtonEmail="Login"
-      titleButtonPolines="Masuk dengan email Polines"
+      titleCard="Login to your account"
+      descriptionContent="Enter your email below to login your account"
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
         <FormLogin />
         <Link to="/register">
           <p className="text-primary">
