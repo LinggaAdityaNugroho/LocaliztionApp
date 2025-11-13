@@ -18,12 +18,13 @@ export function MapLab() {
   return (
     <div>
       <h1>Map Laboratorium Timur</h1>
+
       <MapContainer
         crs={L.CRS.Simple}
         bounds={bounds}
         style={{ width: "100%", height: "100vh" }}
-        maxZoom={2}
-        minZoom={-2}
+        maxZoom={1}
+        minZoom={-1}
       >
         <ImageOverlay url="../../../public/img/denah.jpeg" bounds={bounds} />
 

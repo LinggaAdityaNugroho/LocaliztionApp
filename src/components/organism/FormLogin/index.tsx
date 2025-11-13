@@ -18,7 +18,7 @@ export function FormLogin() {
         <MyButton
           titleButton="Login"
           size="lg"
-          onClick={() => navigate("/map")}
+          onClick={() => navigate("/dashboard")}
         />
         <MyButtonIcon
           titleButton="Masuk dengan email Polines"

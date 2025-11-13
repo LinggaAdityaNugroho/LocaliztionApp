@@ -38,9 +38,15 @@ export function MyButtonIcon({
   icon,
   size = "default",
   variant = "default",
+  onClick,
 }: Props) {
   return (
-    <Button size={size} variant={variant} className="flex items-center gap-2">
+    <Button
+      size={size}
+      variant={variant}
+      className="flex items-center gap-2"
+      onClick={onClick}
+    >
       {icon && <FontAwesomeIcon icon={icon} />}
       {titleButton}
     </Button>
