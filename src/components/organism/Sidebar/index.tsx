@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +12,15 @@ import {
   SidebarFooter,
 } from "../../ui/sidebar";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu.tsx";
+
 // import {
 //   Item,
 //   ItemMedia,
@@ -19,9 +30,10 @@ import {
 // } from "../../ui/item";
 
 import { Home, FolderCog, History, UserRound } from "lucide-react";
-
+import { getProfile } from "../../../services/user.service.ts";
 const items = [
   {
+    titleGroup: "Application",
     title: "Home",
     url: "/#",
     icon: Home,
@@ -38,7 +50,20 @@ const items = [
   },
 ];
 
+function profilePage() {
+  const [profile, setProfile] = useState({ username: "", email: "" });
+
+  useEffect(() => {
+    getProfile()
+      .then((data) => setProfile(data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  return profile;
+}
+
 export function MySidebar() {
+  const profile = profilePage();
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -68,20 +93,33 @@ export function MySidebar() {
           </SidebarContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+
+      <SidebarFooter className="my-4">
         <SidebarMenu>
           <SidebarContent>
-            <SidebarMenuButton size={"lg"}>
-              <img
-                src="../../../../public/img/ryujin.jpg"
-                alt=""
-                className="w-12 h-12 rounded-lg object-cover"
-              />
-              <div className="flex flex-col">
-                <span>Lingga Aditya</span>
-                <span>m@example.com</span>
-              </div>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size={"lg"}>
+                  <img
+                    src="../../../../public/img/ryujin.jpg"
+                    alt=""
+                    className="w-12 h-12 rounded-lg object-cover"
+                  />
+                  <div className="flex flex-col">
+                    <span>{profile.username || "username"} </span>
+                    <span>{profile.email || "email"}</span>
+                  </div>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="right"
+                className="w-[--radix-popper-anchor-width]"
+              >
+                <DropdownMenuLabel>Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Log Out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarContent>
         </SidebarMenu>
       </SidebarFooter>

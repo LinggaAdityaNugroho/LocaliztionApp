@@ -1,20 +1,22 @@
 import { MySidebar } from "../../components/organism/Sidebar";
 import { SidebarProvider, SidebarTrigger } from "../../components/ui/sidebar";
+import { DashboardCard } from "../../components/organism/Dashboard";
+// import { MapLab } from "../../components/organism/Map/Map";
 export function Dashboard() {
   return (
     <SidebarProvider>
       <MySidebar />
-      <main>
+      <main className="w-full">
         <SidebarTrigger className="fixed" />
-      </main>
-      <div className="flex flex-col flex-1 gap-4">
-        <div className="grid gap-4 auto-rows-min md:grid-cols-3">
-          <div className="bg-red-500 aspect-video rounded-xl"></div>
-          <div className="bg-red-500 aspect-video rounded-xl"></div>
-          <div className="bg-red-500 aspect-video rounded-xl"></div>
+        <div className="flex flex-col flex-1 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
+            <DashboardCard />
+            <DashboardCard />
+            <DashboardCard />
+          </div>
+          {/* <MapLab /> */}
         </div>
-        <div className="bg-red-500 aspect-video rounded-xl min-h-[100vh] flex-1 md:min-h-min"></div>
-      </div>
+      </main>
     </SidebarProvider>
   );
 }

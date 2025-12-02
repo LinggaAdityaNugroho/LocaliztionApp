@@ -5,6 +5,13 @@ import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility
 import "leaflet-defaulticon-compatibility";
 import L from "leaflet";
 
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../components/ui/card";
+
 export function MapLab() {
   const bounds: LatLngBoundsExpression = [
     [0, 0],
@@ -17,29 +24,42 @@ export function MapLab() {
 
   return (
     <div>
-      <h1>Map Laboratorium Timur</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <CardTitle>
+              {" "}
+              <p>Map Laboratorium Timur</p>
+            </CardTitle>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MapContainer
+            crs={L.CRS.Simple}
+            bounds={bounds}
+            style={{ width: "100%", height: "100vh" }}
+            maxZoom={1}
+            minZoom={-1}
+          >
+            <ImageOverlay
+              url="../../../public/img/denah.jpeg"
+              bounds={bounds}
+            />
 
-      <MapContainer
-        crs={L.CRS.Simple}
-        bounds={bounds}
-        style={{ width: "100%", height: "100vh" }}
-        maxZoom={1}
-        minZoom={-1}
-      >
-        <ImageOverlay url="../../../public/img/denah.jpeg" bounds={bounds} />
+            <Marker position={device1Position}>
+              <Popup>Osiloscop</Popup>
+            </Marker>
 
-        <Marker position={device1Position}>
-          <Popup>Osiloscop</Popup>
-        </Marker>
+            <Marker position={device2Position}>
+              <Popup>Function Generator</Popup>
+            </Marker>
 
-        <Marker position={device2Position}>
-          <Popup>Function Generator</Popup>
-        </Marker>
-
-        <Marker position={device3Position}>
-          <Popup>Device BLE 3</Popup>
-        </Marker>
-      </MapContainer>
+            <Marker position={device3Position}>
+              <Popup>Device BLE 3</Popup>
+            </Marker>
+          </MapContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }

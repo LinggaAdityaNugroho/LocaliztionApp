@@ -14,7 +14,7 @@ type Props = {
 
 export function AuthLayout({ titleCard, descriptionContent, children }: Props) {
   return (
-    <div className="w-full flex justify-center items-center">
+    <div className="w-full h-full flex justify-center items-center">
       <Card className="px-4 py-6 w-md">
         <CardHeader>
           <CardTitle>

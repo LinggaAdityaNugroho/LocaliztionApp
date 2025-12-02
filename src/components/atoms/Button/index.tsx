@@ -27,7 +27,7 @@ export function MyButton({
   onClick,
 }: Props) {
   return (
-    <Button size={size} variant={variant} onClick={onClick}>
+    <Button size={size} variant={variant} onClick={onClick} type="submit">
       {titleButton}
     </Button>
   );
