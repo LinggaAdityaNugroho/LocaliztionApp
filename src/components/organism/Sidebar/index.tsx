@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +29,9 @@ import {
 
 import { Home, FolderCog, History, UserRound } from "lucide-react";
 import { getProfile } from "../../../services/user.service.ts";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+
 const items = [
   {
     titleGroup: "Application",
@@ -64,12 +65,14 @@ function profilePage() {
 
 export function MySidebar() {
   const profile = profilePage();
+  const navigate = useNavigate();
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
+            <SidebarMenuButton variant={"outline"}>
               <UserRound />
               <span>Localization App</span>
             </SidebarMenuButton>
@@ -81,7 +84,7 @@ export function MySidebar() {
           <SidebarGroupLabel>
             <p>Application</p>
           </SidebarGroupLabel>
-          <SidebarContent className="pt-2">
+          <SidebarContent>
             {items.map((item) => (
               <a href={item.url} className="font-black">
                 <SidebarMenuButton>
@@ -117,7 +120,13 @@ export function MySidebar() {
               >
                 <DropdownMenuLabel>Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log Out</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigate("/settings");
+                  }}
+                >
+                  Settings
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarContent>

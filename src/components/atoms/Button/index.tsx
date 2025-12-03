@@ -2,7 +2,7 @@ import { Button } from "../../ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
-type ButtonSize = "default" | "sm" | "lg" | "icon";
+type ButtonSize = "default" | "sm" | "lg" | "icon" | "circle";
 
 type ButtonVariant =
   | "default"
@@ -10,6 +10,7 @@ type ButtonVariant =
   | "outline"
   | "secondary"
   | "ghost"
+  | "circle"
   | "link";
 
 type Props = {
@@ -18,6 +19,7 @@ type Props = {
   size?: ButtonSize;
   variant?: ButtonVariant;
   onClick?: () => void;
+  classsName?: string;
 };
 
 export function MyButton({
@@ -25,9 +27,16 @@ export function MyButton({
   size = "default",
   variant = "default",
   onClick,
+  classsName,
 }: Props) {
   return (
-    <Button size={size} variant={variant} onClick={onClick} type="submit">
+    <Button
+      size={size}
+      variant={variant}
+      onClick={onClick}
+      className={classsName}
+      type="submit"
+    >
       {titleButton}
     </Button>
   );
