@@ -23,21 +23,6 @@ import {
   CardContent,
 } from "../../components/ui/card";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "../../components/ui/dropdown-menu";
-
 import { devices, columns } from "./dummy";
 
 export function DeviceManagement() {
@@ -66,7 +51,6 @@ export function DeviceManagement() {
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
                     className="cursor-pointer select-none"
                   >
                     {header.isPlaceholder
@@ -75,17 +59,6 @@ export function DeviceManagement() {
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                    {/* <DropdownMenu>
-                      <DropdownMenuTrigger asChild></DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuGroup></DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu> */}
-                    {/* SORT ICON */}
-                    <span className="ml-2">
-                      {header.column.getIsSorted() === "asc" && "🔼"}
-                      {header.column.getIsSorted() === "desc" && "🔽"}
-                    </span>
                   </TableHead>
                 ))}
               </TableRow>

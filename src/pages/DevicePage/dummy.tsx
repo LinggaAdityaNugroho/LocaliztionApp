@@ -1,5 +1,15 @@
 // data dummy
 import type { ColumnDef } from "@tanstack/react-table";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../components/ui/dropdown-menu";
+
+import { IconSelector, IconArrowUp, IconArrowDown } from "@tabler/icons-react";
+
+import { Button } from "../../components/ui/button";
 
 interface typeData {
   deviceID: string;
@@ -46,7 +56,33 @@ export const devices: typeData[] = [
 ];
 
 export const columns: ColumnDef<typeData>[] = [
-  { accessorKey: "deviceID", header: "Device ID", enableSorting: true },
+  {
+    accessorKey: "deviceID",
+    header: ({ column }) => {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant={"outline"} className="border-0">
+              Device ID
+              <IconSelector stroke={2} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="bottom">
+            <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
+              <IconArrowUp stroke={2} />
+              <p>Asc</p>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
+              <IconArrowDown stroke={2} />
+              <p>Desc</p>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+    enableSorting: true,
+  },
+
   { accessorKey: "name", header: "Name", enableSorting: true },
   { accessorKey: "Mac", header: "MAC", enableSorting: true },
   { accessorKey: "type", header: "Type", enableSorting: true },
