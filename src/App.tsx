@@ -5,6 +5,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { MapLab } from "./pages/MapPage";
 import { Dashboard } from "./pages/DashboardPage";
 import { SettingPage } from "./pages/SettingPage";
+import { DeviceManagement } from "./pages/DevicePage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/map" element={<MapLab />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<SettingPage />} />
+        <Route path="/device-management" element={<DeviceManagement />} />
       </Routes>
     </BrowserRouter>
   );

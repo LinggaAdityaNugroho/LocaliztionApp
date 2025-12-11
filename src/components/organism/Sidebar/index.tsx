@@ -36,12 +36,12 @@ const items = [
   {
     titleGroup: "Application",
     title: "Home",
-    url: "/#",
+    url: "/dashboard",
     icon: Home,
   },
   {
     title: "Device Management",
-    url: "/#",
+    url: "/device-management",
     icon: FolderCog,
   },
   {
