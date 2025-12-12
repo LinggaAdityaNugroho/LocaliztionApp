@@ -6,6 +6,7 @@ import { MapLab } from "./pages/MapPage";
 import { Dashboard } from "./pages/DashboardPage";
 import { SettingPage } from "./pages/SettingPage";
 import { DeviceManagement } from "./pages/DevicePage";
+import { AppLayout } from "./layouts/AppLayout/layouts";
 
 function App() {
   return (
@@ -13,10 +14,12 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/map" element={<MapLab />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/settings" element={<SettingPage />} />
-        <Route path="/device-management" element={<DeviceManagement />} />
+        <Route element={<AppLayout />}>
+          <Route path="/map" element={<MapLab />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<SettingPage />} />
+          <Route path="/device-management" element={<DeviceManagement />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
