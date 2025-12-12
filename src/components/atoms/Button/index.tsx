@@ -1,6 +1,7 @@
 import { Button } from "../../ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import type { ReactNode } from "react";
 
 type ButtonSize = "default" | "sm" | "lg" | "icon" | "circle";
 
@@ -20,6 +21,7 @@ type Props = {
   variant?: ButtonVariant;
   onClick?: () => void;
   classsName?: string;
+  children?: ReactNode;
 };
 
 export function MyButton({
@@ -28,6 +30,7 @@ export function MyButton({
   variant = "default",
   onClick,
   classsName,
+  children,
 }: Props) {
   return (
     <Button
@@ -38,6 +41,7 @@ export function MyButton({
       type="submit"
     >
       {titleButton}
+      {children}
     </Button>
   );
 }

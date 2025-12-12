@@ -27,27 +27,38 @@ import {
 //   ItemDescription,
 // } from "../../ui/item";
 
-import { Home, FolderCog, History, UserRound } from "lucide-react";
 import { getProfile } from "../../../services/user.service.ts";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import {
+  IconMap,
+  IconHome,
+  IconDeviceAirtag,
+  IconUser,
+  IconHistory,
+} from "@tabler/icons-react";
 
 const items = [
   {
     titleGroup: "Application",
     title: "Home",
-    url: "/#",
-    icon: Home,
+    url: "/dashboard",
+    icon: IconHome,
   },
   {
     title: "Device Management",
-    url: "/#",
-    icon: FolderCog,
+    url: "/device-management",
+    icon: IconDeviceAirtag,
+  },
+  {
+    title: "Map",
+    url: "/map",
+    icon: IconMap,
   },
   {
     title: "History",
     url: "/#",
-    icon: History,
+    icon: IconHistory,
   },
 ];
 
@@ -73,7 +84,7 @@ export function MySidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton variant={"outline"}>
-              <UserRound />
+              <IconUser stroke={2} />
               <span>Localization App</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

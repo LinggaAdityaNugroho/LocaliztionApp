@@ -19,7 +19,7 @@ export function SettingPage() {
         <div className="flex  items-center gap-10   w-[65%]">
           <div className="flex flex-1 flex-col gap-4 ">
             <MyInputForm label="Name" />
-            <MyInputForm label="Password" />
+            <MyInputForm label="Password" type="password" />
           </div>
           <div className="flex flex-col gap-2  items-center">
             <img
