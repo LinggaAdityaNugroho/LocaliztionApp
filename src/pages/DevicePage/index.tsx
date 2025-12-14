@@ -50,7 +50,9 @@ export function DeviceManagement() {
           titleButton="Add Device"
           onClick={() => setQr(!qr)}
           size="lg"
-          classsName="w-30"
+          className="w-24 text-xs sm:text-sm md:text-base 
+    lg:w-32
+  "
         />
       </div>
       {qr && (
@@ -59,7 +61,7 @@ export function DeviceManagement() {
             <CardContent>
               <div className="w-50 flex flex-col gap-2">
                 <div className="flex justify-end w-full">
-                  <MyButton onClick={() => setQr(!qr)} classsName="w-8 h-8">
+                  <MyButton onClick={() => setQr(!qr)} className="w-8 h-8">
                     <IconX />
                   </MyButton>
                 </div>

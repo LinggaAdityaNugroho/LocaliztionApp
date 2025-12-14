@@ -16,15 +16,13 @@ export function MapLab() {
   const device3Position: LatLngTuple = [100, 500];
 
   return (
-    <div>
-      <h1>Map Laboratorium Timur</h1>
-
+    <div className="w-full min-h-[300px] lg:min-h-[450px] rounded-xl overflow-hidden border">
       <MapContainer
         crs={L.CRS.Simple}
         bounds={bounds}
         maxZoom={1}
         minZoom={-1}
-        className="w-200 h-200"
+        className="w-full h-full"
       >
         <ImageOverlay url="../../../public/img/denah.jpeg" bounds={bounds} />
 

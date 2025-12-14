@@ -12,7 +12,7 @@ export function DashboardCard() {
       <CardHeader>
         <CardTitle>
           <div className="flex w-full place-content-between items-center">
-            <p className=" text-md">Total Activa Tags</p>
+            <p className=" text-md">Total Active Tags</p>
             <div className="flex gap-1 items-center">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               <p>Online</p>

@@ -1,6 +1,13 @@
-("use client");
-import { type ChartConfig, ChartContainer } from "../../ui/chart";
-import { Line, LineChart, CartesianGrid, XAxis } from "recharts";
+"use client";
+
+import { ChartContainer } from "../../ui/chart";
+import {
+  Line,
+  LineChart,
+  CartesianGrid,
+  XAxis,
+  ResponsiveContainer,
+} from "recharts";
 
 const chartConfig = {
   desktop: {
@@ -11,7 +18,7 @@ const chartConfig = {
     label: "Mobile",
     color: "#60a5fa",
   },
-} satisfies ChartConfig;
+};
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -24,18 +31,28 @@ const chartData = [
 
 export function MyChart() {
   return (
-    <ChartContainer config={chartConfig} className="min-h-[60px] w-120">
-      <LineChart accessibilityLayer data={chartData} className="border-2">
-        <CartesianGrid strokeWidth={2} />
-        <XAxis
-          dataKey={"month"}
-          tickLine={true}
-          tickMargin={10}
-          axisLine={false}
-          tickFormatter={(value) => value.slice(0, 3)}
-        />
-        <Line dataKey="desktop" fill="var(--color-desktop)" strokeWidth={2} />
-      </LineChart>
-    </ChartContainer>
+    <div className="w-full min-h-[300px] lg:min-h-[400px] rounded-xl border p-4">
+      <ChartContainer config={chartConfig} className="w-full h-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData}>
+            <CartesianGrid strokeWidth={1} strokeDasharray="3 3" />
+
+            <XAxis
+              dataKey="month"
+              tickMargin={10}
+              axisLine={false}
+              tickFormatter={(value) => value.slice(0, 3)}
+            />
+
+            <Line
+              dataKey="desktop"
+              stroke="var(--color-desktop)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    </div>
   );
 }

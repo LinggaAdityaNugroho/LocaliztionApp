@@ -20,7 +20,7 @@ type Props = {
   size?: ButtonSize;
   variant?: ButtonVariant;
   onClick?: () => void;
-  classsName?: string;
+  className?: string;
   children?: ReactNode;
 };
 
@@ -29,7 +29,7 @@ export function MyButton({
   size = "default",
   variant = "default",
   onClick,
-  classsName,
+  className,
   children,
 }: Props) {
   return (
@@ -37,7 +37,7 @@ export function MyButton({
       size={size}
       variant={variant}
       onClick={onClick}
-      className={classsName}
+      className={className}
       type="submit"
     >
       {titleButton}
