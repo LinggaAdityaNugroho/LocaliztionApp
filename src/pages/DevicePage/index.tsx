@@ -4,8 +4,26 @@ import {
   getCoreRowModel,
   flexRender,
   getSortedRowModel,
+  getPaginationRowModel,
   type SortingState,
 } from "@tanstack/react-table";
+
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "../../components/ui/pagination";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
 
 import {
   Table,
@@ -13,6 +31,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableCaption,
   TableRow,
 } from "../../components/ui/table";
 
@@ -23,6 +42,8 @@ import {
   CardContent,
 } from "../../components/ui/card";
 
+import { Button } from "../../components/ui/button";
+
 import { devices, columns } from "./dummy";
 
 import { MyButton } from "../../components/atoms/Button";
@@ -32,6 +53,10 @@ import { IconX } from "@tabler/icons-react";
 export function DeviceManagement() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [qr, setQr] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 5,
+  });
 
   const table = useReactTable({
     columns,
@@ -39,8 +64,14 @@ export function DeviceManagement() {
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    state: { sorting },
+    getPaginationRowModel: getPaginationRowModel(),
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false,
+    state: { sorting, pagination },
   });
+
+  const getPage = table.getPageCount();
+  const currentPage = table.getState().pagination.pageIndex + 1;
 
   return (
     <div className="flex flex-col gap-3">
@@ -87,6 +118,75 @@ export function DeviceManagement() {
         </CardHeader>
 
         <CardContent>
+          {/* Pagination Size */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>asd</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {[5, 10, 15].map((size) => (
+                <DropdownMenuItem
+                  key={size}
+                  onClick={() => table.setPageSize(size)}
+                >
+                  {size}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* Pagination */}
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  size="default"
+                  onClick={() => table.previousPage()}
+                  className={
+                    !table.getCanPreviousPage()
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
+                />
+              </PaginationItem>
+
+              {currentPage > 2 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+
+              {Array.from({ length: table.getPageCount() }).map((_, i) => (
+                <PaginationItem key={i}>
+                  <PaginationLink
+                    size="default"
+                    isActive={table.getState().pagination.pageIndex === i}
+                    onClick={() => table.setPageIndex(i)}
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
+              {getPage > currentPage && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+
+              <PaginationItem>
+                <PaginationNext
+                  size="default"
+                  onClick={() => table.nextPage()}
+                  className={
+                    !table.getCanNextPage()
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+
           <Table className="border-2 rounded-2xl">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -128,6 +228,12 @@ export function DeviceManagement() {
                 </TableRow>
               )}
             </TableBody>
+            <TableCaption>
+              <span className="text-sm text-muted-foreground">
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount()}
+              </span>
+            </TableCaption>
           </Table>
         </CardContent>
       </Card>

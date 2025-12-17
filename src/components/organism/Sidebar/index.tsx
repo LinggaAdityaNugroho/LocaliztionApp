@@ -83,9 +83,14 @@ export function MySidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton variant={"outline"}>
+            <SidebarMenuButton
+              variant={"outline"}
+              onClick={() => {
+                navigate("/dashboard");
+              }}
+            >
               <IconUser stroke={2} />
-              <span>Localization App</span>
+              <span className="font-medium">Localization App</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -97,7 +102,7 @@ export function MySidebar() {
           </SidebarGroupLabel>
           <SidebarContent>
             {items.map((item) => (
-              <a href={item.url} className="font-black">
+              <a href={item.url} className="font-medium">
                 <SidebarMenuButton>
                   <item.icon />
                   <span>{item.title}</span>

@@ -7,7 +7,7 @@ export function AppLayout() {
     <SidebarProvider defaultOpen={false}>
       <MySidebar />
       <main className="w-full">
-        <SidebarTrigger className="fixed top-2" />
+        <SidebarTrigger className="fixed top-2 ml-5" />
         <div className="p-8">
           <Outlet />
         </div>
