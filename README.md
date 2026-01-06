@@ -16,20 +16,24 @@ Before getting started, make sure you have the following installed on your machi
 
 Check your installation by running:
 
-````bash
+```bash
 node -v
 npm -v
 git --version
+
+```
 
 ---
 
 ## Installation Steps
 
 ### Clone Repository
+
 Clone this repository to your local machine:
+
 ```bash
 git clone https://github.com/LinggaAdityaNugroho/LocaliztionApp.git
-````
+```
 
 Navigate to the project directory:
 
