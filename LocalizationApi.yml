@@ -227,6 +227,8 @@ components:
       - type
       - status
       - postition
+      - x
+      - y
       properties:
         device_id:
           type: string
@@ -244,8 +246,19 @@ components:
           type: string
           example: Online
         postition:
-          type: number
-          example: 212, 322
+          type: array
+          items:
+            type: object
+            required:
+            - x
+            - y
+            properties:
+              x:
+                type: number
+                example: 212
+              y:
+                type: number
+                example: 332
 
     DeviceRegisterRequest:
       type: object

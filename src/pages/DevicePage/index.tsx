@@ -40,6 +40,7 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
+  CardFooter,
 } from "../../components/ui/card";
 
 import { Button } from "../../components/ui/button";
@@ -81,22 +82,8 @@ export function DeviceManagement() {
     startPage = Math.max(1, endPage - visiblePage + 1);
   }
 
-  console.log(currentPage);
-  console.log(startPage);
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        {" "}
-        <MyButton
-          titleButton="Add Device"
-          onClick={() => setQr(!qr)}
-          size="lg"
-          className="w-24 text-xs sm:text-sm md:text-base 
-    lg:w-32
-  "
-        />
-      </div>
+    <div className="flex flex-col gap-3 mt-8">
       {qr && (
         <div className="w-full inset-0  fixed flex items-center justify-center z-10 bg-black/50 ">
           <Card>
@@ -125,26 +112,91 @@ export function DeviceManagement() {
       )}
       <Card>
         <CardHeader>
-          <CardTitle className="font-bold text-3xl">Devices List</CardTitle>
+          <div className="flex justify-between">
+            <CardTitle className="font-bold text-3xl">Devices List</CardTitle>
+            <div className="flex justify-end">
+              {" "}
+              <MyButton
+                titleButton="Add Device"
+                onClick={() => setQr(!qr)}
+                size="lg"
+                className="w-24 text-xs sm:text-sm md:text-base 
+    lg:w-32
+  "
+              />
+            </div>
+          </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           {/* Pagination Size */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>asd</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {[5, 10, 15].map((size) => (
-                <DropdownMenuItem
-                  key={size}
-                  onClick={() => table.setPageSize(size)}
-                >
-                  {size}
-                </DropdownMenuItem>
+          <div className="w-full flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>Size Page</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {[5, 10, 15].map((size) => (
+                  <DropdownMenuItem
+                    key={size}
+                    onClick={() => table.setPageSize(size)}
+                  >
+                    {size}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <Table className="border-2 rounded-2xl">
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className="cursor-pointer select-none"
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </TableHeader>
+
+            <TableBody>
+              {table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length}>No result…</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+            <TableCaption>
+              <span className="text-sm text-muted-foreground">
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount()}
+              </span>
+            </TableCaption>
+          </Table>
+        </CardContent>
+        <CardFooter>
           {/* Pagination */}
           <Pagination>
             <PaginationContent>
@@ -214,56 +266,7 @@ export function DeviceManagement() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-
-          <Table className="border-2 rounded-2xl">
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="cursor-pointer select-none"
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length}>No result…</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-            <TableCaption>
-              <span className="text-sm text-muted-foreground">
-                Page {table.getState().pagination.pageIndex + 1} of{" "}
-                {table.getPageCount()}
-              </span>
-            </TableCaption>
-          </Table>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   );
