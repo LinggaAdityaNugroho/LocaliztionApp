@@ -72,6 +72,17 @@ export function DeviceManagement() {
 
   const getPage = table.getPageCount();
   const currentPage = table.getState().pagination.pageIndex + 1;
+  const visiblePage = 3;
+  let startPage = Math.max(1, currentPage - Math.floor(visiblePage / 2));
+  let endPage = startPage + visiblePage - 1;
+
+  if (endPage > getPage) {
+    endPage = getPage;
+    startPage = Math.max(1, endPage - visiblePage + 1);
+  }
+
+  console.log(currentPage);
+  console.log(startPage);
 
   return (
     <div className="flex flex-col gap-3">
@@ -149,29 +160,46 @@ export function DeviceManagement() {
                 />
               </PaginationItem>
 
-              {currentPage > 2 && (
+              {getPage === visiblePage ? (
+                <PaginationItem>
+                  <PaginationEllipsis className="hidden" />
+                </PaginationItem>
+              ) : currentPage >= 3 ? (
                 <PaginationItem>
                   <PaginationEllipsis />
                 </PaginationItem>
+              ) : (
+                currentPage < 3 && (
+                  <PaginationItem>
+                    <PaginationEllipsis className="hidden" />
+                  </PaginationItem>
+                )
               )}
 
-              {Array.from({ length: table.getPageCount() }).map((_, i) => (
-                <PaginationItem key={i}>
+              {Array.from(
+                { length: endPage - startPage + 1 },
+                (_, i) => startPage + i
+              ).map((page) => (
+                <PaginationItem key={page}>
                   <PaginationLink
                     size="default"
-                    isActive={table.getState().pagination.pageIndex === i}
-                    onClick={() => table.setPageIndex(i)}
+                    isActive={currentPage === page}
+                    onClick={() => table.setPageIndex(page)}
                   >
-                    {i + 1}
+                    {page}
                   </PaginationLink>
                 </PaginationItem>
               ))}
 
-              {getPage > currentPage && (
+              {visiblePage === getPage ? (
+                <PaginationItem>
+                  <PaginationEllipsis className="hidden" />
+                </PaginationItem>
+              ) : currentPage < getPage ? (
                 <PaginationItem>
                   <PaginationEllipsis />
                 </PaginationItem>
-              )}
+              ) : null}
 
               <PaginationItem>
                 <PaginationNext
