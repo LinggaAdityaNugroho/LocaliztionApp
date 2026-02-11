@@ -1,0 +1,58 @@
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Device } from "../../types/Device";
+import { StatusBadge } from "../../components/atoms/StatusBadge";
+import { TypeLabel } from "../../components/atoms/TypeLabel";
+
+export const deviceColumns: ColumnDef<Device>[] = [
+  {
+    accessorKey: "device_names",
+    header: "Device Name",
+  },
+  {
+    accessorKey: "mac_devices",
+    header: "MAC Address",
+  },
+  {
+    accessorKey: "rssi",
+    header: "RSSI",
+  },
+  {
+    accessorKey: "tipe_device",
+    header: "Type",
+    cell: ({ getValue }) => <TypeLabel type={getValue<boolean>()} />,
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ getValue }) => <StatusBadge status={getValue<boolean>()} />,
+  },
+  {
+    accessorKey: "x",
+    header: "X",
+  },
+  {
+    accessorKey: "y",
+    header: "Y",
+  },
+  {
+    accessorKey: "time_stamp",
+    header: "Time",
+    cell: ({ getValue }: any) => {
+      const ts = getValue();
+      if (!ts) return "-";
+
+      // Mengonversi timestamp ke objek Date
+      const date = new Date(ts);
+
+      // Format: DD/MM/YYYY, HH:mm:ss
+      return date.toLocaleString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    },
+  },
+];

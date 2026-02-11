@@ -36,6 +36,7 @@ import {
   IconDeviceAirtag,
   IconUser,
   IconHistory,
+  IconFolder,
 } from "@tabler/icons-react";
 
 const items = [
@@ -57,12 +58,17 @@ const items = [
   },
   {
     title: "History",
-    url: "/#",
+    url: "/history",
     icon: IconHistory,
+  },
+  {
+    title: "Manajemen Inventory",
+    url: "/manajemen-inventory",
+    icon: IconFolder,
   },
 ];
 
-function profilePage() {
+function ProfilePage() {
   const [profile, setProfile] = useState({ username: "", email: "" });
 
   useEffect(() => {
@@ -75,7 +81,7 @@ function profilePage() {
 }
 
 export function MySidebar() {
-  const profile = profilePage();
+  const profile = ProfilePage();
   const navigate = useNavigate();
 
   return (
