@@ -9,7 +9,6 @@ import { DeviceManagement } from "./pages/DevicePage";
 import { AppLayout } from "./layouts/AppLayout/layouts";
 import { HistoryPage } from "./pages/HistoryPage";
 import { ManajemenInventoryPage } from "./pages/ManajemenPage/ManajemenInventoryPage";
-import { Chat } from "./pages/Chat/Chat";
 
 function App() {
   return (
@@ -28,7 +27,6 @@ function App() {
             element={<ManajemenInventoryPage />}
           />
         </Route>
-        <Route path="/chat" element={<Chat />} />
       </Routes>
     </BrowserRouter>
   );

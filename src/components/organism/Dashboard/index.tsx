@@ -27,7 +27,7 @@ export function DashboardCard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/device");
+        const res = await fetch("http://localhost:8000/api/devices");
         if (!res.ok) throw new Error("Failed to fetch device");
 
         const json = await res.json();

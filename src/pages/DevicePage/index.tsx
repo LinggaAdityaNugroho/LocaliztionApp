@@ -10,9 +10,9 @@ import { QrScannerModal } from "../../components/molecules/QRScannerModal";
 import { DeviceManagementTemplate } from "../../layouts/DeviceManagementTemplate";
 import { MyButton } from "../../components/atoms/Button";
 import { deviceColumns } from "./columns";
-import type { Device, DeviceUpdateEvent } from "../../types/Device";
+import type { Device } from "../../types/Device";
 import { DevicePageSize } from "../../components/molecules/DevicePageSize";
-import echo from "../Chat/echo";
+import echo from "../../lib/echo";
 
 export function DeviceManagement() {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -26,7 +26,7 @@ export function DeviceManagement() {
   useEffect(() => {
     const fetchDevice = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/device");
+        const response = await fetch("http://127.0.0.1:8000/api/devices");
         const dataDevice = await response.json();
         setDevices([...dataDevice.data].reverse());
       } catch (err) {
@@ -39,13 +39,27 @@ export function DeviceManagement() {
   // set realtime
   useEffect(() => {
     echo.channel("device-channel").listen(".device.updated", (e: any) => {
+      if (!e.devices) return;
+
       setDevices((prev) => {
-        const isExist = prev.some((device) => device.id === e.id);
-        if (isExist) {
-          return prev.map((device) => (device.id === e.id ? e : device));
-        } else {
-          return [e, ...prev];
-        }
+        let updated = [...prev];
+
+        e.devices.forEach((incoming: any) => {
+          const index = updated.findIndex(
+            (d) => d.mac_devices === incoming.mac_devices,
+          );
+
+          if (index !== -1) {
+            updated[index] = {
+              ...updated[index],
+              ...incoming,
+            };
+          } else {
+            updated.unshift(incoming);
+          }
+        });
+
+        return updated;
       });
     });
 

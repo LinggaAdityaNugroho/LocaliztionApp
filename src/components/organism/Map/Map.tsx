@@ -6,20 +6,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 import "leaflet-defaulticon-compatibility";
+import echo from "../../../lib/echo";
 
 import { MapMarker, MapFullscreenControl, MapPopup } from "../../ui/map";
-import {
-  IconMap,
-  IconHome,
-  IconDeviceAirtag,
-  IconUser,
-  IconHistory,
-  IconFolder,
-} from "@tabler/icons-react";
 
-/* =========================
-   TYPES
-========================= */
 type Device = {
   id: number;
   device_names: string;
@@ -29,9 +19,6 @@ type Device = {
   y: number;
 };
 
-/* =========================
-   HELPER: AUTO FIT BOUNDS
-========================= */
 function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
   const map = useMap();
 
@@ -42,9 +29,6 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
   return null;
 }
 
-/* =========================
-   MAIN COMPONENT
-========================= */
 export function MapLab() {
   /**
    * Denah ukuran (pixel)
@@ -58,14 +42,10 @@ export function MapLab() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* =========================
-     FETCH DATA FROM BACKEND
-  ========================= */
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/device")
+    fetch("http://127.0.0.1:8000/api/devices")
       .then((res) => res.json())
       .then((res) => {
-        // res = { data: [...] }
         const parsed: Device[] = res.data.map((d: any) => ({
           id: d.id,
           device_names: d.device_names,
@@ -83,14 +63,46 @@ export function MapLab() {
       .finally(() => setLoading(false));
   }, []);
 
+  // set realtime
+  useEffect(() => {
+    echo.channel("device-channel").listen(".device.updated", (e: any) => {
+      if (!e.devices) return;
+
+      setDevices((prev) => {
+        let updated = [...prev];
+
+        e.devices.forEach((incoming: any) => {
+          const index = updated.findIndex(
+            (d) => d.mac_devices === incoming.mac_devices,
+          );
+
+          if (index !== -1) {
+            updated[index] = {
+              ...updated[index],
+              ...incoming,
+            };
+          } else {
+            updated.unshift(incoming);
+          }
+        });
+
+        return updated;
+      });
+    });
+
+    return () => {
+      echo.leave("device-channel");
+    };
+  }, []);
+
   return (
-    <div className="w-full h-[450px] rounded-xl overflow-hidden border">
+    <div className="w-full h-[450px] rounded-xl overflow-hidden border ">
       <MapContainer
         crs={L.CRS.Simple}
         bounds={bounds}
         minZoom={-1}
         maxZoom={1}
-        className="w-full h-full"
+        className="w-full h-full "
       >
         {/* Force fit denah */}
         <FitBounds bounds={bounds} />

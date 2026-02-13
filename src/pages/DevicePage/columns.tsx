@@ -13,8 +13,16 @@ export const deviceColumns: ColumnDef<Device>[] = [
     header: "MAC Address",
   },
   {
-    accessorKey: "rssi",
-    header: "RSSI",
+    accessorKey: "rssi1",
+    header: "RSSI-1",
+  },
+  {
+    accessorKey: "rssi2",
+    header: "RSSI-2",
+  },
+  {
+    accessorKey: "rssi3",
+    header: "RSSI-3",
   },
   {
     accessorKey: "tipe_device",
@@ -35,7 +43,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
     header: "Y",
   },
   {
-    accessorKey: "time_stamp",
+    accessorKey: "updated_at",
     header: "Time",
     cell: ({ getValue }: any) => {
       const ts = getValue();
