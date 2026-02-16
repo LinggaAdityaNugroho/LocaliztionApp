@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, ImageOverlay, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
 import L from "leaflet";
-
+// @ts-ignore
+import "leaflet.marker.slideto";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 import "leaflet-defaulticon-compatibility";
+import { MapPin } from "lucide-react";
+import { renderToString } from "react-dom/server";
 import echo from "../../../lib/echo";
-
-import { MapMarker, MapFullscreenControl, MapPopup } from "../../ui/map";
 
 type Device = {
   id: number;
@@ -29,11 +30,48 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
   return null;
 }
 
+function DevicesLayer({ devices }: { devices: Device[] }) {
+  const map = useMap();
+  const markersRef = useRef<Map<number, L.Marker>>(new Map());
+
+  useEffect(() => {
+    devices.forEach((device) => {
+      const position: LatLngTuple = [device.y, device.x];
+      const mapPin = renderToString(<MapPin />);
+      const deviceIcon = L.divIcon({
+        html: mapPin,
+      });
+
+      // Kalau marker belum ada → buat
+      if (!markersRef.current.has(device.id)) {
+        const marker = L.marker(position, { icon: deviceIcon }).addTo(map);
+
+        marker.bindPopup(`
+         <div class="custom-popup">
+          <strong>${device.device_names}</strong><br/>
+          MAC: ${device.mac_devices}<br/>
+          X: ${device.x}, 
+          Y: ${device.y}
+        </div>
+        `);
+
+        markersRef.current.set(device.id, marker);
+      } else {
+        // Kalau sudah ada → slide
+        const marker = markersRef.current.get(device.id);
+
+        (marker as any).slideTo(position, {
+          duration: 400,
+          keepAtCenter: false,
+        });
+      }
+    });
+  }, [devices, map]);
+
+  return null;
+}
+
 export function MapLab() {
-  /**
-   * Denah ukuran (pixel)
-   * tinggi x lebar
-   */
   const bounds: LatLngBoundsExpression = [
     [0, 0],
     [480, 1280],
@@ -42,6 +80,7 @@ export function MapLab() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ========= Fetch awal ========= */
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/devices")
       .then((res) => res.json())
@@ -57,13 +96,10 @@ export function MapLab() {
 
         setDevices(parsed);
       })
-      .catch((err) => {
-        console.error("Fetch error:", err);
-      })
       .finally(() => setLoading(false));
   }, []);
 
-  // set realtime
+  /* ========= Realtime Echo ========= */
   useEffect(() => {
     echo.channel("device-channel").listen(".device.updated", (e: any) => {
       if (!e.devices) return;
@@ -80,9 +116,15 @@ export function MapLab() {
             updated[index] = {
               ...updated[index],
               ...incoming,
+              x: Number(incoming.x),
+              y: Number(incoming.y),
             };
           } else {
-            updated.unshift(incoming);
+            updated.unshift({
+              ...incoming,
+              x: Number(incoming.x),
+              y: Number(incoming.y),
+            });
           }
         });
 
@@ -96,40 +138,17 @@ export function MapLab() {
   }, []);
 
   return (
-    <div className="w-full h-[450px] rounded-xl overflow-hidden border ">
+    <div className="w-full h-[450px] rounded-xl overflow-hidden border">
       <MapContainer
         crs={L.CRS.Simple}
         bounds={bounds}
         minZoom={-1}
         maxZoom={1}
-        className="w-full h-full "
+        className="w-full h-full"
       >
-        {/* Force fit denah */}
         <FitBounds bounds={bounds} />
-        <MapFullscreenControl />
-
-        {/* Denah indoor */}
         <ImageOverlay url="/img/denah.jpeg" bounds={bounds} />
-
-        {/* Render devices */}
-        {!loading &&
-          devices.map((device) => {
-            const position: LatLngTuple = [device.y, device.x];
-
-            return (
-              <MapMarker key={device.id} position={position}>
-                <MapPopup>
-                  <strong>{device.device_names}</strong>
-                  <br />
-                  MAC: {device.mac_devices}
-                  <br />
-                  RSSI: {device.rssi}
-                  <br />
-                  X: {device.x}, Y: {device.y}
-                </MapPopup>
-              </MapMarker>
-            );
-          })}
+        <DevicesLayer devices={devices} />
       </MapContainer>
     </div>
   );

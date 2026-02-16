@@ -16,7 +16,67 @@ while True:
                 "rssi1": random_rssi(),
                 "rssi2": random_rssi(),
                 "rssi3": random_rssi()
-            }
+            },
+             {
+                "mac_devices": "FF1",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF2",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF3",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF4",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF5",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF6",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF7",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF8",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF9",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
+             {
+                "mac_devices": "FF10",
+                "rssi1": random_rssi(),
+                "rssi2": random_rssi(),
+                "rssi3": random_rssi()
+            },
         ]
     }
 
@@ -36,4 +96,4 @@ while True:
     except Exception as e:
         print("Error:", e)
 
-    time.sleep(10)
+    time.sleep(2)
