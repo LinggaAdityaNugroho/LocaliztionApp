@@ -9,16 +9,37 @@ import { DeviceManagement } from "./pages/DevicePage";
 import { AppLayout } from "./layouts/AppLayout/layouts";
 import { HistoryPage } from "./pages/HistoryPage";
 import { ManajemenInventoryPage } from "./pages/ManajemenPage/ManajemenInventoryPage";
+import AuthSuccess from "./components/organism/FormLogin/AuthSuccess";
+import GuestRoute from "./routes/GuestRoute";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import { NotFoundPage } from "./pages/NotFoundPage/NotFoundPage";
+import { ProtectedNotFoundPage } from "./routes/ProtectedNotFoundPage";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <GuestRoute>
+              <LoginPage />
+            </GuestRoute>
+          }
+        />
+
         <Route path="/register" element={<RegisterPage />} />
-        <Route element={<AppLayout />}>
-          <Route path="/map" element={<MapLabPage />} />
+        <Route path="/auth/success" element={<AuthSuccess />} />
+
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/map" element={<MapLabPage />} />
           <Route path="/settings" element={<SettingPage />} />
           <Route path="/device-management" element={<DeviceManagement />} />
           <Route path="/history" element={<HistoryPage />} />
@@ -26,7 +47,11 @@ function App() {
             path="/manajemen-inventory"
             element={<ManajemenInventoryPage />}
           />
+
+          <Route path="*" element={<ProtectedNotFoundPage />} />
         </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

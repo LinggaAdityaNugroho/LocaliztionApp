@@ -57,7 +57,7 @@ export function MyButtonIcon({
     <Button
       size={size}
       variant={variant}
-      className="flex items-center gap-2"
+      className="flex items-center w-full gap-2"
       onClick={onClick}
     >
       {icon && <FontAwesomeIcon icon={icon} />}

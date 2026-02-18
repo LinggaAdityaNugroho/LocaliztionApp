@@ -38,6 +38,7 @@ import {
   IconHistory,
   IconFolder,
 } from "@tabler/icons-react";
+import api from "../../../services/api.ts";
 
 const items = [
   {
@@ -70,7 +71,6 @@ const items = [
 
 function ProfilePage() {
   const [profile, setProfile] = useState({ username: "", email: "" });
-
   useEffect(() => {
     getProfile()
       .then((data) => setProfile(data))
@@ -83,6 +83,28 @@ function ProfilePage() {
 export function MySidebar() {
   const profile = ProfilePage();
   const navigate = useNavigate();
+
+  const logOut = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      await api.post(
+        "/logout",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+    } catch (error) {
+      console.log(error);
+    }
+
+    localStorage.removeItem("token");
+
+    window.location.replace("/");
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -148,6 +170,9 @@ export function MySidebar() {
                   }}
                 >
                   Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logOut} className="text-red-600">
+                  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

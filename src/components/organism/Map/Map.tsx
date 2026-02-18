@@ -80,7 +80,6 @@ export function MapLab() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ========= Fetch awal ========= */
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/devices")
       .then((res) => res.json())
@@ -99,7 +98,6 @@ export function MapLab() {
       .finally(() => setLoading(false));
   }, []);
 
-  /* ========= Realtime Echo ========= */
   useEffect(() => {
     echo.channel("device-channel").listen(".device.updated", (e: any) => {
       if (!e.devices) return;
@@ -138,7 +136,7 @@ export function MapLab() {
   }, []);
 
   return (
-    <div className="w-full h-[450px] rounded-xl overflow-hidden border">
+    <div className="w-full h-[450px] rounded-xl overflow-hidden border z-10">
       <MapContainer
         crs={L.CRS.Simple}
         bounds={bounds}

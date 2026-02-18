@@ -1,3 +1,4 @@
+import api from "../../../services/api";
 import {
   Card,
   CardHeader,
@@ -27,11 +28,8 @@ export function DashboardCard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/devices");
-        if (!res.ok) throw new Error("Failed to fetch device");
-
-        const json = await res.json();
-        setDevices(json.data ?? json);
+        const res = await api.get("/devices");
+        setDevices(res.data.data);
       } catch (err: any) {
         setError(err.message);
         setDevices([]);
