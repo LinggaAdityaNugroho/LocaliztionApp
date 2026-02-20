@@ -80,7 +80,11 @@ export function DeviceManagement() {
 
   return (
     <>
-      <QrScannerModal open={qr} onClose={() => setQr(false)} />
+      <QrScannerModal
+        open={qr}
+        onClose={() => setQr(false)}
+        onScan={(res) => console.log(res)}
+      />
 
       <DeviceManagementTemplate
         header={

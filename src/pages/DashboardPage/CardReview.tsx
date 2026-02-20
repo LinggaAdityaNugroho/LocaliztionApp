@@ -78,9 +78,9 @@ export function CardReview() {
           <CardHeader>
             <div className="flex gap-4">
               <img
-                src="../../../../public/img/ryujin.jpg"
-                alt=""
-                className="w-12 h-12 rounded-lg object-cover"
+                src={data.user.avatar || "/public/img/profile.png"}
+                alt="Profile"
+                className="relative w-28 h-28 lg:w-32 lg:h-32 rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-xl"
               />
               <div>
                 <CardTitle className="text-sm">{data.user.name}</CardTitle>

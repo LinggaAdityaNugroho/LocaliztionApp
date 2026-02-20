@@ -14,6 +14,7 @@ import GuestRoute from "./routes/GuestRoute";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { NotFoundPage } from "./pages/NotFoundPage/NotFoundPage";
 import { ProtectedNotFoundPage } from "./routes/ProtectedNotFoundPage";
+import { ClassPage } from "./pages/ClassPage/ClassPage";
 
 function App() {
   return (
@@ -47,6 +48,8 @@ function App() {
             path="/manajemen-inventory"
             element={<ManajemenInventoryPage />}
           />
+
+          <Route path="/class" element={<ClassPage />} />
 
           <Route path="*" element={<ProtectedNotFoundPage />} />
         </Route>

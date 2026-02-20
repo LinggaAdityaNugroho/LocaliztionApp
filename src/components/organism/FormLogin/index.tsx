@@ -48,12 +48,11 @@ export function FormLogin() {
           type="password"
           placeholder="password"
           onChange={(e) => setPassword(e.target.value)}
-        /> */}
+        />
 
-        {/* <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <Button type="submit">login</Button>
-        </div>
-        */}
+        </div> */}
       </form>
       <MyButtonIcon
         className="w-full"

@@ -3,7 +3,7 @@ import json
 import random
 import time
 
-URL = "http://127.0.0.1:8000/api/device/update-rssi"
+URL = "http://10.97.233.94:8000/api/device/update-rssi"
 
 def random_rssi():
     return random.randint(-100, -20)
@@ -12,13 +12,13 @@ while True:
     data = {
         "devices": [
             {
-                "mac_devices": "FF",
+                "mac_devices": "ff:ff:12:98:49:63",
                 "rssi1": random_rssi(),
                 "rssi2": random_rssi(),
                 "rssi3": random_rssi()
             },
              {
-                "mac_devices": "FF1",
+                "mac_devices": "FF:FF:12:98:49:63",
                 "rssi1": random_rssi(),
                 "rssi2": random_rssi(),
                 "rssi3": random_rssi()

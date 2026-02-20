@@ -81,7 +81,7 @@ export function MapLab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/devices")
+    fetch("http://10.97.233.94:8000/api/devices")
       .then((res) => res.json())
       .then((res) => {
         const parsed: Device[] = res.data.map((d: any) => ({

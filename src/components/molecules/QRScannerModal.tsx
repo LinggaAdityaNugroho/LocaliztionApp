@@ -1,14 +1,16 @@
 import { Card, CardContent } from "../ui/card";
 import { MyButton } from "../atoms/Button";
 import { Scanner } from "@yudiel/react-qr-scanner";
+import type { IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { IconX } from "@tabler/icons-react";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  onScan: (result: string) => void;
 }
 
-export function QrScannerModal({ open, onClose }: Props) {
+export function QrScannerModal({ open, onClose, onScan }: Props) {
   if (!open) return null;
 
   return (
@@ -20,7 +22,13 @@ export function QrScannerModal({ open, onClose }: Props) {
               <IconX />
             </MyButton>
           </div>
-          <Scanner onScan={(res) => console.log(res)} />
+          <Scanner
+            onScan={(codes: IDetectedBarcode[]) => {
+              if (codes.length > 0) {
+                onScan(codes[0].rawValue);
+              }
+            }}
+          />
         </CardContent>
       </Card>
     </div>
