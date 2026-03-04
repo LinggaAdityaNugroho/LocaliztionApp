@@ -10,6 +10,7 @@ import "leaflet-defaulticon-compatibility";
 import { MapPin } from "lucide-react";
 import { renderToString } from "react-dom/server";
 import echo from "../../../lib/echo";
+import api from "../../../services/api";
 
 type Device = {
   id: number;
@@ -81,21 +82,15 @@ export function MapLab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://10.97.233.94:8000/api/devices")
-      .then((res) => res.json())
-      .then((res) => {
-        const parsed: Device[] = res.data.map((d: any) => ({
-          id: d.id,
-          device_names: d.device_names,
-          mac_devices: d.mac_devices,
-          rssi: d.rssi,
-          x: Number(d.x),
-          y: Number(d.y),
-        }));
-
-        setDevices(parsed);
-      })
-      .finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const response = await api.get('/devices')
+        setDevices(response.data.data)
+      } catch (err) {
+        console.log("Error fetch data", err)
+      }
+    }
+    fetchData()
   }, []);
 
   useEffect(() => {

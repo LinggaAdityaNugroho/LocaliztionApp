@@ -53,6 +53,11 @@ const items = [
     url: "/manajemen-inventory",
     icon: IconFolder,
   },
+  {
+    title: "Peminjaman",
+    url: "/peminjaman",
+    icon: IconFolder,
+  }
 ];
 
 export function MySidebar() {

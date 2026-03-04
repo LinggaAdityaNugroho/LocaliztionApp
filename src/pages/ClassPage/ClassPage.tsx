@@ -1,61 +1,93 @@
+import { useEffect, useState, useCallback } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  type SortingState,
+  type ColumnDef,
+} from "@tanstack/react-table";
+
+// UI Components
 import { QrScannerModal } from "../../components/molecules/QRScannerModal";
-import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
+import { DeviceTable } from "../../components/molecules/DeviceTable";
+import { DevicePagination } from "../../components/molecules/DevicePagination";
+import { DevicePageSize } from "../../components/molecules/DevicePageSize";
+import { PeminjamanForm } from "../../components/molecules/PeminjamanForm";
+import { RandomizerMenu } from "../../components/molecules/RandomizerMenu";
+
 import api from "../../services/api";
 
+// ... Interface tetap sama seperti kode Anda ...
 interface UserData {
   name: string;
   email: string;
-  student_class: {
-    class: string;
-  };
+  nim: string;
+  student_class: { class: string };
+}
+
+interface Peminjaman {
+  id: number;
+  nama_mahasiswa: string;
+  nim: string;
+  laboratorium: string;
+  waktu_pinjam: string;
+  status: string;
+  alat: { nama_alat: string };
 }
 
 export function ClassPage() {
   const [qr, setQr] = useState(false);
+  const [activeTab, setActiveTab] = useState<"peminjaman" | "randomizer">("peminjaman");
   const [userData, setUserData] = useState<UserData | null>(null);
   const [scanResult, setScanResult] = useState<any>(null);
-  const [classmates, setClassmates] = useState<any[]>([]);
+  const [classmates, setClassmates] = useState<any[]>([]); // Data teman sekelas untuk randomizer
+  const [inventoryData, setInventoryData] = useState<Peminjaman[]>([]);
   const [loading, setLoading] = useState(true);
   const [processLoading, setProcessLoading] = useState(false);
 
-  // State untuk Randomizer
-  const [numGroups, setNumGroups] = useState<number>(2);
-  const [groups, setGroups] = useState<any[][]>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 });
 
-  useEffect(() => {
-    const initApp = async () => {
-      try {
-        setLoading(true);
-        const [userRes, sessionRes] = await Promise.all([
-          api.get("user"),
-          api.get("scan-room/check-session"),
-        ]);
+  const initApp = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [userRes, sessionRes, invRes] = await Promise.all([
+        api.get("user"),
+        api.get("scan-room/check-session"),
+        api.get("peminjaman"),
+      ]);
 
-        setUserData(userRes.data);
-        if (sessionRes.data.active) {
-          setScanResult(sessionRes.data.data);
-          setClassmates(sessionRes.data.classmates || []);
-        }
-      } catch (error) {
-        console.error("Gagal sinkronisasi sesi.");
-      } finally {
-        setLoading(false);
+      setUserData(userRes.data);
+      setInventoryData(invRes.data?.data || invRes.data || []);
+
+      if (sessionRes.data.active) {
+        setScanResult(sessionRes.data.data);
+        setClassmates(sessionRes.data.classmates || []); // Ambil teman sekelas dari session
+      } else {
+        setScanResult(null);
       }
-    };
-    initApp();
+    } catch (error) {
+      console.error("Gagal sinkronisasi data.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    initApp();
+  }, [initApp]);
+
+  // ... handleScan & handleCheckout tetap sama ...
   const handleScan = async (scannedId: string) => {
     setProcessLoading(true);
     try {
       await api.post("scan-room/scan", {
         roomclass_id: parseInt(scannedId),
-        keperluan: "Praktikum Jaringan",
+        keperluan: "Praktikum Lab",
       });
-      const sessionRes = await api.get("scan-room/check-session");
-      setScanResult(sessionRes.data.data);
-      setClassmates(sessionRes.data.classmates);
+      await initApp();
       setQr(false);
     } catch (error: any) {
       alert(error.response?.data?.message || "Gagal scan");
@@ -70,202 +102,140 @@ export function ClassPage() {
     try {
       await api.post(`scan-room/checkout/${scanResult.id}`);
       setScanResult(null);
-      setClassmates([]);
-      setGroups([]);
+      await initApp();
     } catch (error) {
-      alert("Gagal keluar");
+      alert("Gagal keluar ruangan");
     } finally {
       setProcessLoading(false);
     }
   };
 
-  const generateGroups = () => {
-    if (classmates.length === 0) return;
-    const shuffled = [...classmates].sort(() => Math.random() - 0.5);
-    const result: any[][] = Array.from(
-      { length: Math.max(1, numGroups) },
-      () => [],
-    );
+  const columns: ColumnDef<Peminjaman>[] = [
+    { header: "Alat", accessorFn: (row) => row.alat.nama_alat },
+    { header: "Pinjam", accessorKey: "waktu_pinjam" },
+    {
+      header: "Status",
+      accessorKey: "status",
+      cell: ({ getValue }) => {
+        const status = getValue<string>()?.toLowerCase() || "pending";
+        const styles: Record<string, string> = {
+          pending: "bg-amber-100 text-amber-700",
+          disetujui: "bg-blue-100 text-blue-700",
+          selesai: "bg-emerald-100 text-emerald-700",
+          ditolak: "bg-rose-100 text-rose-700",
+        };
+        return (
+          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${styles[status] || "bg-gray-100"}`}>
+            {status}
+          </span>
+        );
+      },
+    },
+  ];
 
-    shuffled.forEach((student, index) => {
-      result[index % result.length].push(student);
-    });
-    setGroups(result);
-  };
+  const table = useReactTable({
+    data: inventoryData,
+    columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+      <p className="text-slate-500 font-bold tracking-widest uppercase text-xs">Singkronisasi Data...</p>
+    </div>
+  );
 
   return (
-    <div className=" min-h-screen p-4 md:p-8 transition-colors duration-300">
-      <QrScannerModal
-        open={qr}
-        onClose={() => setQr(false)}
-        onScan={handleScan}
-      />
+    <div className="min-h-screen p-4 md:p-8 transition-all duration-300">
+      <QrScannerModal open={qr} onClose={() => setQr(false)} onScan={handleScan} />
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {!scanResult ? (
-          /* HERO SECTION - BEFORE SCAN */
-          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl shadow-indigo-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 text-center mt-10 transform transition-all hover:scale-[1.01]">
-            <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-3xl">📡</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-1">
-              Presensi Digital
-            </h1>
-            <p className="text-indigo-600 dark:text-indigo-400 font-bold tracking-widest text-sm mb-8">
-              KELAS {userData?.student_class.class}
-            </p>
-
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl mb-8 border border-slate-100 dark:border-slate-700">
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black mb-1">
-                Identitas Mahasiswa
-              </p>
-              <p className="font-bold text-slate-700 dark:text-slate-200">
-                {userData?.name}
-              </p>
-            </div>
-
-            <Button
-              onClick={() => setQr(true)}
-              className="w-full py-8 text-lg rounded-2xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 shadow-xl shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
-              disabled={processLoading}
-            >
-              {processLoading ? "Memproses..." : "Scan Barcode Masuk"}
+          /* TAMPILAN SEBELUM SCAN */
+          <div className="max-w-md mx-auto p-10 rounded-[3rem] shadow-2xl text-center mt-20 border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-500 bg-white dark:bg-slate-900">
+            <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-2">Akses Lab</h1>
+            <p className="text-slate-500 mb-10 text-sm font-medium leading-relaxed">Silakan scan QR Code ruangan untuk memulai presensi dan fitur lainnya.</p>
+            <Button onClick={() => setQr(true)} className="w-full py-8 text-lg rounded-3xl bg-indigo-600 font-bold" disabled={processLoading}>
+              {processLoading ? "Memproses..." : "Scan QR Masuk"}
             </Button>
           </div>
         ) : (
-          /* DASHBOARD SECTION - AFTER SCAN */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* PANEL KIRI: DAFTAR HADIR */}
-            <div className="lg:col-span-4">
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 sticky top-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
-                    Daftar Hadir
-                  </h3>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                      AKTIF
-                    </span>
-                  </div>
-                </div>
+          /* TAMPILAN DASHBOARD SETELAH SCAN */
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+                  {scanResult.room?.name || scanResult.roomclass || "Laboratorium"}
+                </h2>
+                <p className="text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-widest mt-1">
+                  {userData?.name} ({userData?.student_class?.class})
+                </p>
+              </div>
 
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {classmates.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex items-center p-3 rounded-2xl border transition-all ${
-                        item.email === userData?.email
-                          ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800"
-                          : "bg-slate-50 dark:bg-slate-800/40 border-transparent"
-                      }`}
-                    >
-                      <div className="w-10 h-10 bg-white dark:bg-slate-700 shadow-sm rounded-xl flex items-center justify-center text-sm font-black text-indigo-600 dark:text-indigo-400 mr-4 shrink-0">
-                        {item.name.charAt(0)}
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
-                          {item.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                          {item.email}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  variant="destructive"
-                  className="w-full mt-8 rounded-2xl py-7 font-black text-sm tracking-widest uppercase bg-rose-500 hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 dark:shadow-none"
-                  onClick={handleCheckout}
-                  disabled={processLoading}
+              {/* MENU SWITCHER */}
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto">
+                <button
+                  onClick={() => setActiveTab("peminjaman")}
+                  className={`flex-1 md:px-6 py-2 rounded-xl text-xs font-black transition-all ${activeTab === "peminjaman" ? "bg-white dark:bg-slate-700 shadow-sm text-indigo-600" : "text-slate-500"}`}
                 >
-                  SCAN KELUAR
-                </Button>
+                  PEMINJAMAN
+                </button>
+                <button
+                  onClick={() => setActiveTab("randomizer")}
+                  className={`flex-1 md:px-6 py-2 rounded-xl text-xs font-black transition-all ${activeTab === "randomizer" ? "bg-white dark:bg-slate-700 shadow-sm text-indigo-600" : "text-slate-500"}`}
+                >
+                  RANDOMIZER
+                </button>
               </div>
-            </div>
 
-            {/* PANEL KANAN: RANDOMIZER */}
-            <div className="lg:col-span-8">
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 h-full">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-2xl text-xl">
-                    🎲
-                  </div>
-                  <h3 className="font-black text-xl text-slate-800 dark:text-slate-100 tracking-tight">
-                    Group Randomizer
-                  </h3>
-                </div>
+              <Button variant="destructive" className="rounded-2xl px-8 py-6 font-black text-xs tracking-widest uppercase" onClick={handleCheckout} disabled={processLoading}>
+                Keluar
+              </Button>
+            </header>
 
-                <div className="flex flex-col sm:flex-row items-end gap-4 mb-10 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-slate-700">
-                  <div className="w-full sm:w-32">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-2 block uppercase tracking-widest">
-                      Jumlah
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={numGroups}
-                      onChange={(e) =>
-                        setNumGroups(parseInt(e.target.value) || 1)
-                      }
-                      className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-black text-indigo-600 dark:text-indigo-400 text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    />
-                  </div>
-                  <Button
-                    onClick={generateGroups}
-                    className="w-full sm:flex-1 h-[60px] bg-slate-800 hover:bg-slate-950 dark:bg-indigo-600 dark:hover:bg-indigo-700 rounded-2xl font-bold text-white shadow-xl transition-all active:scale-[0.98]"
-                  >
-                    ACAK KELOMPOK SEKARANG
-                  </Button>
-                </div>
-
-                {/* HASIL KELOMPOK */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {groups.length > 0 ? (
-                    groups.map((group, gIdx) => (
-                      <div
-                        key={gIdx}
-                        className="group p-6 bg-white dark:bg-slate-800/30 border-2 border-slate-50 dark:border-slate-800 rounded-[2rem] shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all duration-300"
-                      >
-                        <div className="flex items-center mb-5 pb-4 border-b border-dashed border-slate-100 dark:border-slate-700">
-                          <span className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-lg shadow-indigo-200 dark:shadow-none mr-3">
-                            {gIdx + 1}
-                          </span>
-                          <h4 className="font-black text-slate-800 dark:text-slate-200 text-sm tracking-tight">
-                            KELOMPOK {gIdx + 1}
-                          </h4>
-                        </div>
-                        <ul className="space-y-3">
-                          {group.map((s, sIdx) => (
-                            <li
-                              key={sIdx}
-                              className="text-[13px] text-slate-600 dark:text-slate-400 flex items-center font-semibold group-hover:translate-x-1 transition-transform"
-                            >
-                              <span className="w-1.5 h-1.5 bg-indigo-400 dark:bg-indigo-600 rounded-full mr-3 shrink-0"></span>
-                              <span className="truncate">{s.name}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="md:col-span-2 py-24 text-center border-4 border-dashed border-slate-50 dark:border-slate-800/50 rounded-[2.5rem]">
-                      <p className="text-slate-300 dark:text-slate-700 font-black text-lg uppercase tracking-tighter italic">
-                        Belum Ada Kelompok Terbentuk
-                      </p>
+            {/* KONTEN BERDASARKAN TAB */}
+            <div className="animate-in fade-in duration-500">
+              {activeTab === "peminjaman" ? (
+                /* TAB PEMINJAMAN */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  <div className="lg:col-span-4">
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm">
+                      <h3 className="font-black text-slate-800 dark:text-white uppercase text-sm mb-6">Pinjam Alat Baru</h3>
+                      <PeminjamanForm
+                        userContext={{
+                          nama_mahasiswa: userData?.name || "",
+                          nim: userData?.nim || "",
+                          laboratorium: scanResult.room?.name || scanResult.roomclass || "Lab",
+                        }}
+                        onSuccess={initApp}
+                      />
                     </div>
-                  )}
+                  </div>
+                  <div className="lg:col-span-8">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm overflow-hidden h-full flex flex-col">
+                      <div className="p-6 border-b flex justify-between items-center ">
+                        <h3 className="font-black text-slate-200 text-sm uppercase">Riwayat Pinjam</h3>
+                        <DevicePageSize table={table} />
+                      </div>
+                      <div className="p-6 overflow-x-auto grow">
+                        <DeviceTable table={table} columns={columns} />
+                      </div>
+                      <div className="p-6 border-t">
+                        <DevicePagination table={table} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* TAB RANDOMIZER */
+                <RandomizerMenu classmates={classmates} />
+              )}
             </div>
           </div>
         )}

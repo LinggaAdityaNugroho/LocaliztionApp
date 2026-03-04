@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -8,96 +8,109 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 
-import { DeviceTable } from "../../components/molecules/DeviceTable";
-import { DevicePagination } from "../../components/molecules/DevicePagination";
-import { DeviceManagementTemplate } from "../../layouts/DeviceManagementTemplate";
-import { DevicePageSize } from "../../components/molecules/DevicePageSize";
-import { PeminjamanForm } from "../../components/molecules/PeminjamanForm";
+// API Service
+import api from "../../services/api";
 
-interface Peminjaman {
-  nama_mahasiswa: string;
-  nim: string;
-  laboratorium: string;
-  tujuan_penggunaan: string;
-  waktu_pinjam: string;
-  waktu_kembali: string;
-  status: string;
-  alat: {
-    id: number;
-    nama_alat: string;
-    ruang_lab: string;
-    total: number;
-    tersedia: number;
-    kondisi: string;
-  };
+
+import { Badge } from "../../components/atoms/Badge";
+import { Button } from "../../components/ui/button";
+import { SectionHeader } from "../../components/molecules/SectionHeader";
+import { InventoryTable } from "../../components/organism/InventoryTable";
+import { AlatForm } from "../../components/molecules/AlatForm";
+import { InventoryTemplate } from "../../layouts/InventoryTemplate";
+
+// --- Interfaces ---
+interface Alat {
+  id: number;
+  nama_alat: string;
+  ruang_lab: string;
+  total: number;
+  tersedia: number;
+  kondisi: string;
 }
 
-const columns: ColumnDef<Peminjaman>[] = [
-  { header: "Nama Mahasiswa", accessorKey: "nama_mahasiswa" },
-  { header: "NIM", accessorKey: "nim" },
-  { header: "Lab", accessorKey: "laboratorium" },
-  { header: "Tujuan", accessorKey: "tujuan_penggunaan" },
-  { header: "Waktu Pinjam", accessorKey: "waktu_pinjam" },
-  { header: "Waktu Kembali", accessorKey: "waktu_kembali" },
-  {
-    header: "Status",
-    accessorKey: "status",
-    cell: ({ getValue }) => (
-      <span className="capitalize font-semibold">{getValue<string>()}</span>
-    ),
-  },
-  {
-    header: "Nama Alat",
-    accessorFn: (row) => row.alat.nama_alat,
-  },
-  {
-    header: "Ruang Alat",
-    accessorFn: (row) => row.alat.ruang_lab,
-  },
-  {
-    header: "Total",
-    accessorFn: (row) => row.alat.total,
-  },
-  {
-    header: "Tersedia",
-    accessorFn: (row) => row.alat.tersedia,
-  },
-  {
-    header: "Kondisi Alat",
-    accessorFn: (row) => row.alat.kondisi,
-    cell: ({ getValue }) =>
-      getValue<string>() === "baik" ? (
-        <span className="text-green-600 font-semibold">Baik</span>
-      ) : (
-        <span className="text-red-600 font-semibold">Rusak</span>
-      ),
-  },
-];
-
 export function ManajemenInventoryPage() {
-  const [data, setData] = useState<Peminjaman[]>([]);
+  // --- States ---
+  const [alatList, setAlatList] = useState<Alat[]>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 5,
-  });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/peminjaman")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch data");
-        return res.json();
-      })
-      .then((json) => setData(json.data ?? json))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  // --- API Functions ---
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/alat");
+      const result = response.data?.data || response.data || [];
+      setAlatList(result);
+    } catch (err: any) {
+      console.error("Gagal mengambil data alat:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const table = useReactTable({
-    data,
-    columns,
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // --- Column Definitions ---
+  const columnsAlat: ColumnDef<Alat>[] = [
+    {
+      header: "Nama Alat",
+      accessorKey: "nama_alat",
+      cell: ({ row }) => (
+        <span className="font-bold text-slate-900 dark:text-white">
+          {row.original.nama_alat}
+        </span>
+      ),
+    },
+    {
+      header: "Ruang Lab",
+      accessorKey: "ruang_lab",
+      cell: ({ row }) => (
+        <span className="text-indigo-600 font-semibold">
+          {row.original.ruang_lab}
+        </span>
+      ),
+    },
+    {
+      header: "Total",
+      accessorKey: "total",
+      cell: ({ row }) => (
+        <span className="text-center block font-mono">
+          {row.original.total}
+        </span>
+      ),
+    },
+    {
+      header: "Tersedia",
+      accessorKey: "tersedia",
+      cell: ({ row }) => (
+        <span
+          className={`font-black ${row.original.tersedia > 0 ? "text-emerald-500" : "text-rose-500"
+            }`}
+        >
+          {row.original.tersedia}
+        </span>
+      ),
+    },
+    {
+      header: "Kondisi",
+      accessorKey: "kondisi",
+      cell: ({ row }) => (
+        <Badge variant={row.original.kondisi.toLowerCase() === "baik" ? "success" : "danger"}>
+          {row.original.kondisi}
+        </Badge>
+      ),
+    },
+  ];
+
+  // --- React Table Instance ---
+  const tableAlat = useReactTable({
+    data: alatList,
+    columns: columnsAlat,
     state: { sorting, pagination },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
@@ -106,23 +119,54 @@ export function ManajemenInventoryPage() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  if (loading) return <p>Loading data...</p>;
-  if (error) return <p className="text-red-500">Error: {error}</p>;
-
   return (
-    <div className=" mx-auto mt-10">
-      <h1 className="text-2xl font-bold mb-4">Ajukan Peminjaman Alat</h1>
-      <PeminjamanForm />
-      <DeviceManagementTemplate
-        header={
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Manajemen Peminjaman</h2>
-            <DevicePageSize table={table} />
+    <InventoryTemplate
+      header={
+        <SectionHeader
+          title="Manajemen Inventaris"
+          badgeText="Admin Control"
+          description="Kelola stok dan kondisi aset laboratorium secara real-time."
+          rightElement={
+            <Button
+              onClick={() => setIsFormOpen(!isFormOpen)}
+              className={`px-8 py-6 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${isFormOpen
+                ? "bg-slate-800 hover:bg-slate-700"
+                : "bg-indigo-600 shadow-xl shadow-indigo-100 hover:bg-indigo-700"
+                }`}
+            >
+              {isFormOpen ? "Tutup Form" : "+ Input Alat Baru"}
+            </Button>
+          }
+        />
+      }
+      form={
+        isFormOpen && (
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border-4 border-indigo-50 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">
+                !
+              </div>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white">
+                Registrasi Alat Baru
+              </h2>
+            </div>
+            <AlatForm
+              onSuccess={() => {
+                setIsFormOpen(false);
+                fetchData();
+              }}
+            />
           </div>
-        }
-        table={<DeviceTable table={table} columns={columns} />}
-        pagination={<DevicePagination table={table} />}
-      />
-    </div>
+        )
+      }
+      table={
+        <InventoryTable
+          table={tableAlat}
+          columns={columnsAlat}
+          loading={loading}
+          header="Daftar Alat"
+        />
+      }
+    />
   );
 }

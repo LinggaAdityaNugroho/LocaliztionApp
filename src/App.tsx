@@ -15,6 +15,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import { NotFoundPage } from "./pages/NotFoundPage/NotFoundPage";
 import { ProtectedNotFoundPage } from "./routes/ProtectedNotFoundPage";
 import { ClassPage } from "./pages/ClassPage/ClassPage";
+import { PeminjamanPage } from "./pages/PeminjamanPage/PeminjamanPage";
 
 function App() {
   return (
@@ -47,6 +48,10 @@ function App() {
           <Route
             path="/manajemen-inventory"
             element={<ManajemenInventoryPage />}
+          />
+          <Route
+            path="/peminjaman"
+            element={<PeminjamanPage />}
           />
 
           <Route path="/class" element={<ClassPage />} />

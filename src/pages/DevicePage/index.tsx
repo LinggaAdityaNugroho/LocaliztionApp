@@ -13,6 +13,7 @@ import { deviceColumns } from "./columns";
 import type { Device } from "../../types/Device";
 import { DevicePageSize } from "../../components/molecules/DevicePageSize";
 import echo from "../../lib/echo";
+import api from "../../services/api";
 
 export function DeviceManagement() {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -24,16 +25,16 @@ export function DeviceManagement() {
 
   // fetch api
   useEffect(() => {
-    const fetchDevice = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/devices");
-        const dataDevice = await response.json();
-        setDevices([...dataDevice.data].reverse());
+        const response = await api.get('/devices')
+        setDevices(response.data.data)
       } catch (err) {
-        console.log(err);
+        console.log("Error fetch data", err)
       }
-    };
-    fetchDevice();
+
+    }
+    fetchData()
   }, []);
 
   // set realtime
