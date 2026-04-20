@@ -8,14 +8,24 @@ import { SettingPage } from "./pages/SettingPage";
 import { DeviceManagement } from "./pages/DevicePage";
 import { AppLayout } from "./layouts/AppLayout/layouts";
 import { HistoryPage } from "./pages/HistoryPage";
-import { ManajemenInventoryPage } from "./pages/ManajemenPage/ManajemenInventoryPage";
-import AuthSuccess from "./components/organism/FormLogin/AuthSuccess";
+import { AlatTable } from "./pages/ManajemenPage/ManajemenInventoryPage";
+import { AuthSuccess } from "./components/organism/FormLogin/AuthSuccess";
 import GuestRoute from "./routes/GuestRoute";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { NotFoundPage } from "./pages/NotFoundPage/NotFoundPage";
 import { ProtectedNotFoundPage } from "./routes/ProtectedNotFoundPage";
 import { ClassPage } from "./pages/ClassPage/ClassPage";
-import { PeminjamanPage } from "./pages/PeminjamanPage/PeminjamanPage";
+import { RiwayatPeminjamanAlat } from "./pages/Staff/RiwayatPeminjamanAlat/RiwayatPeminjamanAlat";
+import { RiwayatPeminjamanRuangPage } from "./pages/Staff/RiwayatPeminjamanRuang/RiwayatPeminjamanRuangPage";
+import { LaporanKerusakanPage } from "./pages/Staff/LaporanKerusakan/LaporanKerusakanPage";
+import { PersetujuanPinjamPage } from "./pages/Staff/PersetujuanPinjam/PersetujuanPinjamPage";
+import { KetersediaanAlatPage } from "./pages/Staff/KetersediaanAlat/KetersediaanAlatPage";
+import PeminjamanPage from "./pages/Mahasiswa/Peminjaman/PeminjamanPage";
+import { PenggunaanRuangLabPage } from "./pages/Mahasiswa/PenggunaanRuangLab/PenggunaanRuangLabPage";
+import { RiwayatPeminjamanAlatPage } from "./pages/Mahasiswa/Riwayat Peminjaman Alat/RiwayatPeminjamanAlatPage";
+import { RiwayatPenggunaanRuangPage } from "./pages/Mahasiswa/Riwayat Penggunaan Ruang/RiwayatPenggunaanRuangPage";
+import PengajuanPeminjamanPage from "./pages/Mahasiswa/Pengajuan Pinjam Alat/PengajuanPinjamAlatPage";
+import PengembalianAlatPage from "./pages/Mahasiswa/Pengembalian/PengembalianAlatPage";
 
 function App() {
   return (
@@ -45,18 +55,44 @@ function App() {
           <Route path="/settings" element={<SettingPage />} />
           <Route path="/device-management" element={<DeviceManagement />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/alat" element={<AlatTable />} />
           <Route
-            path="/manajemen-inventory"
-            element={<ManajemenInventoryPage />}
+            path="/riwayat-peminjaman-alat"
+            element={<RiwayatPeminjamanAlat />}
           />
           <Route
-            path="/peminjaman"
-            element={<PeminjamanPage />}
+            path="/riwayat-peminjaman-ruang"
+            element={<RiwayatPeminjamanRuangPage />}
           />
+          <Route path="/laporan-kerusakan" element={<LaporanKerusakanPage />} />
+          <Route
+            path="/persetujuan-pinjam"
+            element={<PersetujuanPinjamPage />}
+          />
+          <Route path="/ketersediaan-alat" element={<KetersediaanAlatPage />} />
 
           <Route path="/class" element={<ClassPage />} />
 
           <Route path="*" element={<ProtectedNotFoundPage />} />
+          {/* mahasiswa */}
+          <Route path="/peminjaman-aktif" element={<PeminjamanPage />} />
+          <Route path="/pengembalian-alat" element={<PengembalianAlatPage />} />
+          <Route
+            path="/penggunaan-ruang-lab"
+            element={<PenggunaanRuangLabPage />}
+          />
+          <Route
+            path="/riwayat-peminjaman-alat"
+            element={<RiwayatPeminjamanAlatPage />}
+          />
+          <Route
+            path="/riwayat-penggunaan-ruang"
+            element={<RiwayatPenggunaanRuangPage />}
+          />
+          <Route
+            path="/pengajuan-pinjam-alat"
+            element={<PengajuanPeminjamanPage />}
+          />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

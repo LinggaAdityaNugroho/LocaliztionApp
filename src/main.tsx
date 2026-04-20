@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./app.css";
 import { ThemeProvider } from "./components/themes/themes-provider";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const rootElement = document.getElementById("root");
 
@@ -15,5 +16,5 @@ ReactDOM.createRoot(rootElement).render(
     <ThemeProvider>
       <App />
     </ThemeProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

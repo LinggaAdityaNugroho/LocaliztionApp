@@ -1,114 +1,220 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { Button } from "../ui/button";
 import api from "../../services/api";
 
-interface AlatFormProps {
-    onSuccess?: () => void;
+export interface AlatFormData {
+  id?: number;
+  nama_alat: string;
+  letak: string;
+  kode_tag?: string;
+  jumlah: number | "";
+  kondisi: string;
 }
 
-export function AlatForm({ onSuccess }: AlatFormProps) {
-    const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({
-        nama_alat: "",
-        ruang_lab: "",
-        total: 0,
-        tersedia: 0,
-        kondisi: "Baik"
-    });
+interface AlatFormProps {
+  initialData?: AlatFormData;
+  onSuccess: () => void;
+}
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+export function AlatForm({ initialData, onSuccess }: AlatFormProps) {
+  const [rooms, setRooms] = useState<string[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(true);
 
-        // Validasi Sederhana
-        if (!form.nama_alat || !form.ruang_lab || form.total <= 0) {
-            alert("Harap isi Nama Alat, Ruang Lab, dan Total Alat dengan benar.");
-            return;
-        }
+  const [formData, setFormData] = useState<AlatFormData>({
+    nama_alat: "",
+    letak: "",
+    kode_tag: "",
+    jumlah: "",
+    kondisi: "baik",
+  });
 
-        try {
-            setLoading(true);
-            const payload = { ...form, tersedia: form.total };
-
-            await api.post("/alat", payload);
-
-            alert("Alat baru berhasil ditambahkan!");
-            if (onSuccess) onSuccess();
-
-            // Reset Form
-            setForm({
-                nama_alat: "",
-                ruang_lab: "",
-                total: 0,
-                tersedia: 0,
-                kondisi: "Baik"
-            });
-        } catch (err: any) {
-            alert(err.response?.data?.message || "Gagal menambahkan alat.");
-        } finally {
-            setLoading(false);
-        }
+  // 1. Ambil daftar ruangan
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const res = await api.get("/ruangan-list");
+        setRooms(res.data);
+      } catch (err) {
+        console.error("Gagal mengambil daftar ruangan:", err);
+        setRooms([
+          "Lab Elektronika Dasar",
+          "Lab Digital",
+          "Gudang",
+          "Gedung Telekomunikasi",
+        ]);
+      } finally {
+        setLoadingRooms(false);
+      }
     };
+    fetchRooms();
+  }, []);
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-                {/* NAMA ALAT */}
-                <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Nama Alat</label>
-                    <input
-                        className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-sm font-semibold dark:text-white outline-none focus:border-indigo-500"
-                        placeholder="Contoh: Osiloskop Digital"
-                        value={form.nama_alat}
-                        onChange={(e) => setForm({ ...form, nama_alat: e.target.value })}
-                    />
-                </div>
+  // 2. Load Initial Data untuk Edit
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        kode_tag: initialData.kode_tag || "",
+        jumlah: initialData.jumlah ?? "",
+        kondisi: initialData.kondisi?.toLowerCase() || "baik",
+      });
+    }
+  }, [initialData]);
 
-                {/* RUANG LAB */}
-                <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Ruang Laboratorium</label>
-                    <input
-                        className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-sm font-semibold dark:text-white outline-none focus:border-indigo-500"
-                        placeholder="Contoh: Lab Elektronika Dasar"
-                        value={form.ruang_lab}
-                        onChange={(e) => setForm({ ...form, ruang_lab: e.target.value })}
-                    />
-                </div>
+  // --- LOGIKA PERBAIKAN: KUNCI JUMLAH JIKA ADA KODE TAG ---
+  useEffect(() => {
+    if (formData.kode_tag && formData.kode_tag.trim() !== "") {
+      setFormData((prev) => ({ ...prev, jumlah: 1 }));
+    }
+  }, [formData.kode_tag]);
 
-                <div className="grid grid-cols-2 gap-4">
-                    {/* JUMLAH TOTAL */}
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Total Unit</label>
-                        <input
-                            type="number"
-                            className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-sm font-semibold dark:text-white outline-none focus:border-indigo-500"
-                            value={form.total}
-                            onChange={(e) => setForm({ ...form, total: parseInt(e.target.value) })}
-                        />
-                    </div>
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...formData,
+        kondisi: formData.kode_tag ? formData.kondisi.toLowerCase() : "baik",
+      };
 
-                    {/* KONDISI */}
-                    <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Kondisi Awal</label>
-                        <select
-                            className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-sm font-semibold dark:text-white outline-none focus:border-indigo-500 appearance-none"
-                            value={form.kondisi}
-                            onChange={(e) => setForm({ ...form, kondisi: e.target.value })}
-                        >
-                            <option value="Baik">Baik</option>
-                            <option value="Rusak">Rusak</option>
-                            <option value="Perlu Kalibrasi">Perlu Kalibrasi</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+      if (initialData?.id) {
+        await api.put(`/alat/${initialData.id}`, payload);
+      } else {
+        await api.post("/alat", payload);
+      }
+      onSuccess();
+    } catch (error: any) {
+      console.error("Submit error:", error.response?.data || error);
+      const serverMessage =
+        error.response?.data?.message || "Gagal menyimpan data";
+      alert(serverMessage);
+    }
+  };
 
-            <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 py-8 rounded-[2rem] font-black text-sm shadow-xl shadow-indigo-100 active:scale-95 disabled:bg-slate-400 transition-all"
-            >
-                {loading ? "PROSES MENYIMPAN..." : "TAMBAHKAN KE INVENTARIS"}
-            </Button>
-        </form>
-    );
+  // Helper untuk cek apakah input jumlah harus dimatikan
+  const isQuantityDisabled = !!(
+    formData.kode_tag && formData.kode_tag.trim() !== ""
+  );
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="grid grid-cols-1 md:grid-cols-2 gap-4"
+    >
+      {/* NAMA ALAT */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+          Nama Alat / Komponen
+        </label>
+        <input
+          className="p-3 border rounded-xl bg-slate-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+          placeholder="Contoh: Resistor 10k"
+          value={formData.nama_alat}
+          onChange={(e) =>
+            setFormData({ ...formData, nama_alat: e.target.value })
+          }
+          required
+        />
+      </div>
+
+      {/* LETAK */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+          Letak (Ruangan/Lemari)
+        </label>
+        <select
+          className="p-3 border rounded-xl bg-slate-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold cursor-pointer"
+          value={formData.letak}
+          onChange={(e) => setFormData({ ...formData, letak: e.target.value })}
+          required
+        >
+          <option value="" disabled>
+            -- Pilih Lokasi Lab --
+          </option>
+          {loadingRooms ? (
+            <option>Loading...</option>
+          ) : (
+            rooms.map((room) => (
+              <option key={room} value={room}>
+                {room}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
+      {/* KODE TAG */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+          Kode Tag (Kosongkan jika Konsumsi)
+        </label>
+        <input
+          className="p-3 border rounded-xl bg-slate-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+          placeholder="Contoh: INV-001"
+          value={formData.kode_tag}
+          onChange={(e) =>
+            setFormData({ ...formData, kode_tag: e.target.value })
+          }
+        />
+      </div>
+
+      {/* JUMLAH STOK (DIPERBAIKI) */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+          Jumlah Stok {isQuantityDisabled && "(Terkunci 1)"}
+        </label>
+        <input
+          type="number"
+          min="1"
+          className={`p-3 border rounded-xl transition-all outline-none text-sm font-semibold ${
+            isQuantityDisabled
+              ? "bg-slate-200 cursor-not-allowed text-slate-500 shadow-inner"
+              : "bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500"
+          }`}
+          value={formData.jumlah}
+          onChange={(e) => {
+            const value = e.target.value;
+            setFormData({
+              ...formData,
+              jumlah: value === "" ? "" : parseInt(value),
+            });
+          }}
+        />
+      </div>
+
+      {/* KONDISI */}
+      <div className="flex flex-col gap-1 md:col-span-2">
+        <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">
+          Kondisi Alat
+        </label>
+        <select
+          className={`p-3 border rounded-xl outline-none transition-all text-sm font-semibold ${
+            !formData.kode_tag
+              ? "bg-slate-100 cursor-not-allowed text-slate-400"
+              : "bg-slate-50 focus:ring-2 focus:ring-indigo-500"
+          }`}
+          value={formData.kode_tag ? formData.kondisi : "baik"}
+          disabled={!formData.kode_tag}
+          onChange={(e) =>
+            setFormData({ ...formData, kondisi: e.target.value })
+          }
+        >
+          <option value="baik">BAIK (NORMAL)</option>
+          <option value="rusak">RUSAK (BUTUH PERBAIKAN)</option>
+        </select>
+        {!formData.kode_tag && (
+          <span className="text-[9px] text-indigo-500 mt-1 font-bold italic uppercase tracking-tighter">
+            * Item konsumsi (tanpa kode tag) otomatis dianggap Baik.
+          </span>
+        )}
+      </div>
+
+      <Button
+        type="submit"
+        className="md:col-span-2 py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 mt-2"
+      >
+        {initialData?.id ? "Update Data Inventori" : "Simpan ke Database"}
+      </Button>
+    </form>
+  );
 }

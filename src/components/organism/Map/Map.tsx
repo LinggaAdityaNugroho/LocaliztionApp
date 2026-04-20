@@ -31,13 +31,18 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
   return null;
 }
 
+const scale = 100;
+
 function DevicesLayer({ devices }: { devices: Device[] }) {
   const map = useMap();
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
 
   useEffect(() => {
     devices.forEach((device) => {
-      const position: LatLngTuple = [device.y, device.x];
+      const posX = device.x * scale;
+      const posY = device.y * scale;
+
+      const position: LatLngTuple = [posY, posX];
       const mapPin = renderToString(<MapPin />);
       const deviceIcon = L.divIcon({
         html: mapPin,
@@ -75,22 +80,22 @@ function DevicesLayer({ devices }: { devices: Device[] }) {
 export function MapLab() {
   const bounds: LatLngBoundsExpression = [
     [0, 0],
-    [480, 1280],
+    [764, 1600],
   ];
 
   const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get('/devices')
-        setDevices(response.data.data)
+        const response = await api.get("/devices");
+        setDevices(response.data.data);
       } catch (err) {
-        console.log("Error fetch data", err)
+        console.log("Error fetch data", err);
       }
-    }
-    fetchData()
+    };
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -140,7 +145,7 @@ export function MapLab() {
         className="w-full h-full"
       >
         <FitBounds bounds={bounds} />
-        <ImageOverlay url="/img/denah.jpeg" bounds={bounds} />
+        <ImageOverlay url="/img/hoe.jpeg" bounds={bounds} />
         <DevicesLayer devices={devices} />
       </MapContainer>
     </div>

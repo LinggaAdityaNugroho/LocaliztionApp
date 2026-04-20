@@ -2,9 +2,18 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../services/api";
 
-export default function ProtectedRoute({ children }: any) {
+interface ProtectedRouteProps {
+  children?: React.ReactNode;
+  allowedRoles?: string[];
+}
+
+export default function ProtectedRoute({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [isAuth, setIsAuth] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -17,18 +26,23 @@ export default function ProtectedRoute({ children }: any) {
       }
 
       try {
-        await api.get("/user", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
+        const response = await api.get("/user");
         setIsAuth(true);
-      } catch (error) {
-        localStorage.removeItem("token");
-        setIsAuth(false);
-      }
+        // Pastikan backend kamu mengirim field 'role', jika tidak ada ganti ke 'user'
+        setUserRole(response.data.role || "user");
+      } catch (error: any) {
+        console.error("Auth Error:", error);
 
+        // HANYA tendang ke login jika error 401 (Token kadaluarsa/salah)
+        if (error.response?.status === 401) {
+          localStorage.removeItem("token");
+          setIsAuth(false);
+        } else {
+          // Jika error 500 atau koneksi Ngrok bermasalah,
+          // tetap izinkan masuk selama ada token di storage (opsional)
+          setIsAuth(true);
+        }
+      }
       setLoading(false);
     };
 
@@ -37,8 +51,10 @@ export default function ProtectedRoute({ children }: any) {
 
   if (loading) return null;
 
-  if (!isAuth) {
-    return <Navigate to="/" replace />;
+  if (!isAuth) return <Navigate to="/" replace />;
+
+  if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children ? children : <Outlet />;

@@ -1,24 +1,40 @@
-import { DeviceTable } from "../molecules/DeviceTable";
-import { DevicePagination } from "../molecules/DevicePagination";
-import { DevicePageSize } from "../molecules/DevicePageSize";
+import React from "react";
+import { flexRender } from "@tanstack/react-table";
 
-export const InventoryTable = ({ header, table, columns, loading }: any) => (
-    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        {loading ? (
-            <div className="p-32 text-center font-black text-slate-300 animate-pulse tracking-widest italic text-xl">SYNCING...</div>
-        ) : (
-            <div className="flex flex-col">
-                <div className="p-8 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center ">
-                    <h3 className="font-black text-slate-800 dark:text-white uppercase tracking-tighter">{header}</h3>
-                    <DevicePageSize table={table} />
-                </div>
-                <div className="px-6 py-4 overflow-x-auto min-h-[400px]">
-                    <DeviceTable table={table} columns={columns} />
-                </div>
-                <div className="p-8 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800">
-                    <DevicePagination table={table} />
-                </div>
-            </div>
-        )}
+export function InventoryTable({ table, loading, header }: any) {
+  if (loading) return <div className="p-10 text-center font-bold">Memuat data...</div>;
+
+  return (
+    <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
+      <div className="p-6 border-b border-slate-50">
+        <h3 className="font-bold text-slate-800">{header}</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-slate-50/50">
+            {table.getHeaderGroups().map((headerGroup: any) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header: any) => (
+                  <th key={header.id} className="p-4 text-xs font-black text-slate-400 uppercase tracking-wider">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row: any) => (
+              <tr key={row.id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
+                {row.getVisibleCells().map((cell: any) => (
+                  <th key={cell.id} className="p-4 text-sm text-slate-600 font-medium">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-);
+  );
+}
