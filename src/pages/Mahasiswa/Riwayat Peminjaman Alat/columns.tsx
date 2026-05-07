@@ -30,28 +30,7 @@ export const getColumns = (
       </span>
     ),
   },
-  {
-    accessorKey: "user.name",
-    header: "Peminjam",
-    cell: ({ row }) => {
-      const user = row.original.user;
-      return (
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200">
-            <UserIcon size={14} />
-          </div>
-          <div>
-            <div className="font-bold text-slate-900 text-sm leading-none mb-1">
-              {user?.name || "N/A"}
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium tracking-wide">
-              NIM: {user?.nim_nip}
-            </div>
-          </div>
-        </div>
-      );
-    },
-  },
+
   {
     accessorKey: "details",
     header: "Informasi Alat",
@@ -165,6 +144,18 @@ export const getColumns = (
               {kondisi === "rusak" ? "✗ Unit Rusak" : "✓ Unit Baik"}
             </div>
           )}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "approved",
+    header: "Approved By",
+    cell: ({ row }) => {
+      const approved = row.original.penerima || [];
+      return (
+        <div className="space-y-2 max-w-[220px]">
+          <div className="flex flex-wrap gap-1">{approved?.name}</div>
         </div>
       );
     },

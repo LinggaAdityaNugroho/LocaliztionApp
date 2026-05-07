@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -38,6 +38,7 @@ export function RiwayatPeminjamanAlat() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const fetchRiwayat = async () => {
     try {
@@ -55,6 +56,11 @@ export function RiwayatPeminjamanAlat() {
     fetchRiwayat();
   }, []);
 
+  const filteredData = useMemo(() => {
+    if (statusFilter === "all") return data;
+    return data.filter((item) => item.status === statusFilter);
+  }, [data, statusFilter]);
+
   const columns = useMemo(() => getColumns(setSelectedImg), []);
   const stats = useMemo(
     () => ({
@@ -67,7 +73,7 @@ export function RiwayatPeminjamanAlat() {
   );
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: { globalFilter, sorting },
     onGlobalFilterChange: setGlobalFilter,
@@ -109,27 +115,47 @@ export function RiwayatPeminjamanAlat() {
         />
       </div>
 
-      {/* Toolbar: Search & Page Size */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Input
-            placeholder="Cari data peminjaman..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="max-w-xs rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-          <Button
-            variant="ghost"
-            onClick={fetchRiwayat}
-            className="rounded-xl hover:bg-slate-100 text-slate-500"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-          </Button>
+      {/* Toolbar: Search, Status Filter & Page Size */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        {/* Sisi Kiri: Search & Filter Status */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-3 flex-1">
+          <div className="relative w-full md:w-auto">
+            <Input
+              placeholder="Cari data..."
+              value={globalFilter ?? ""}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full md:w-64 rounded-xl border-slate-200 focus:ring-indigo-500 pl-4"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-40 rounded-xl border-slate-200 bg-slate-50/50 font-medium text-sm transition-all hover:bg-slate-50">
+                <SelectValue placeholder="Pilih Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="pending">Menunggu</SelectItem>
+                <SelectItem value="ongoing">Dipinjam</SelectItem>
+                <SelectItem value="returned">Dikembalikan</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="ghost"
+              onClick={fetchRiwayat}
+              className="rounded-xl hover:bg-slate-100 text-slate-500 shrink-0"
+              title="Refresh Data"
+            >
+              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">
-            Baris per halaman
+        {/* Sisi Kanan: Page Size */}
+        <div className="flex items-center justify-end gap-3 border-t md:border-t-0 pt-3 md:pt-0">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Baris:
           </span>
           <Select
             value={`${table.getState().pagination.pageSize}`}
@@ -162,7 +188,7 @@ export function RiwayatPeminjamanAlat() {
       {/* Atom/Molecule: Image Lightbox */}
       {selectedImg && (
         <div
-          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-300"
+          className="fixed inset-0 z-9999 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-300"
           onClick={() => setSelectedImg(null)}
         >
           <Button

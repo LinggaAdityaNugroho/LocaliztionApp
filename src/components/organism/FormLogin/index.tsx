@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { MyInputForm } from "../../molecules/Form";
-import { MyButtonIcon } from "../../atoms/Button";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-import api from "../../../services/api";
+
+import apiPolines from "../../../services/apiPolines";
 import { Button } from "../../ui/button";
 import { Loader2, Eye, EyeOff } from "lucide-react"; // Tambahkan icon Eye
+import { GoogleLogin } from "@react-oauth/google";
 
 export function FormLogin() {
   const [email, setEmail] = useState("");
@@ -14,17 +14,13 @@ export function FormLogin() {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const loginGoogle = () => {
-    window.location.href = "http://localhost:8000/api/auth/google/redirect";
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg("");
 
     try {
-      const response = await api.post("/login", { email, password });
+      const response = await apiPolines.post("/login", { email, password });
       localStorage.setItem("token", response.data.token);
       window.location.replace("/dashboard");
     } catch (error: any) {
@@ -67,12 +63,6 @@ export function FormLogin() {
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
-
-          <div className="flex justify-end">
-            <a href="#" className="text-xs text-blue-600 hover:underline">
-              Lupa password?
-            </a>
-          </div>
         </div>
 
         <Button type="submit" className="w-full py-6" disabled={isLoading}>
@@ -97,12 +87,23 @@ export function FormLogin() {
         </div>
       </div>
 
-      <MyButtonIcon
-        className="w-full border border-gray-300 py-3 hover:bg-gray-50"
-        titleButton="Google Workspace"
-        icon={faGoogle}
-        size="lg"
-        onClick={loginGoogle}
+      <GoogleLogin
+        onSuccess={async (credentialResponse) => {
+          try {
+            const res = await apiPolines.post("/auth/google", {
+              token: credentialResponse.credential,
+            });
+
+            localStorage.setItem("token", res.data.token);
+            window.location.replace("/dashboard");
+          } catch (err: any) {
+            console.error(err.response?.data);
+            alert(err.response?.data?.message || "Login gagal");
+          }
+        }}
+        onError={() => {
+          console.log("Login Google gagal");
+        }}
       />
     </div>
   );

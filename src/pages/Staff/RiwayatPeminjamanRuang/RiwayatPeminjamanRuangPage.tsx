@@ -38,6 +38,7 @@ export function RiwayatPeminjamanRuangPage() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  const [conditionFilter, setConditionFilter] = useState<string>("");
 
   const fetchRiwayat = async () => {
     try {
@@ -55,6 +56,17 @@ export function RiwayatPeminjamanRuangPage() {
     fetchRiwayat();
   }, []);
 
+  const conditionFiltered = useMemo(() => {
+    if (!conditionFilter || conditionFilter === "all") return data;
+
+    return data.filter((item: any) => {
+      return (
+        item.kondisi_masuk?.toLowerCase() ||
+        item.kondisi_keluar?.toLowerCase() === conditionFilter.toLowerCase()
+      );
+    });
+  }, [data, conditionFilter]);
+
   const columns = useMemo(() => getColumns(setSelectedImg), []);
   const stats = useMemo(
     () => ({
@@ -67,7 +79,7 @@ export function RiwayatPeminjamanRuangPage() {
   );
 
   const table = useReactTable({
-    data,
+    data: conditionFiltered,
     columns,
     state: { globalFilter, sorting },
     onGlobalFilterChange: setGlobalFilter,
@@ -110,26 +122,45 @@ export function RiwayatPeminjamanRuangPage() {
       </div>
 
       {/* Toolbar: Search & Page Size */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Input
-            placeholder="Cari data peminjaman..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="max-w-xs rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-          <Button
-            variant="ghost"
-            onClick={fetchRiwayat}
-            className="rounded-xl hover:bg-slate-100 text-slate-500"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-          </Button>
+      {/* Toolbar: Search, Status Filter & Page Size */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-3 flex-1">
+          <div className="relative w-full md:w-auto">
+            <Input
+              placeholder="Cari data..."
+              value={globalFilter ?? ""}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full md:w-64 rounded-xl border-slate-200 focus:ring-indigo-500 pl-4"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Select value={conditionFilter} onValueChange={setConditionFilter}>
+              <SelectTrigger className="w-full md:w-40 rounded-xl border-slate-200 bg-slate-50/50 font-medium text-sm transition-all hover:bg-slate-50">
+                <SelectValue placeholder="Pilih Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="bersih">Bersih</SelectItem>
+                <SelectItem value="kotor">Kotor</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="ghost"
+              onClick={fetchRiwayat}
+              className="rounded-xl hover:bg-slate-100 text-slate-500 shrink-0"
+              title="Refresh Data"
+            >
+              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">
-            Baris per halaman
+        {/* Sisi Kanan: Page Size */}
+        <div className="flex items-center justify-end gap-3 border-t md:border-t-0 pt-3 md:pt-0">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Baris Per Halaman:
           </span>
           <Select
             value={`${table.getState().pagination.pageSize}`}

@@ -14,7 +14,9 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ThemeProvider>
-      <App />
+      <GoogleOAuthProvider clientId="503041106911-inus2artgq0t0v54dc3jfacsn0d197gp.apps.googleusercontent.com">
+        <App />
+      </GoogleOAuthProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );

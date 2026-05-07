@@ -222,6 +222,7 @@ export default function PeminjamanPage() {
                           <i className="bi bi-hash text-xs"></i>
                           <span className="text-xs font-bold">{item.id}</span>
                         </div>
+                        <div>Approved by : {item.penerima?.name}</div>
                         <div
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
                         >

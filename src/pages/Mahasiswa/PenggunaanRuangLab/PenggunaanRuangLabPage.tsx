@@ -5,18 +5,18 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import api from "../../../services/api";
 import Swal from "sweetalert2";
 import Webcam from "react-webcam";
-import api from "../../../services/api";
 
 // 1. DAFTAR RUANGAN SPESIFIK (Dropdown)
 const RUANGAN_SPESIFIK = [
-  "Laboratorium Barat 1",
-  "Laboratorium Barat 2",
-  "Laboratorium Timur 1",
-  "Laboratorium Timur 2",
-  "Laboratorium Broadcast",
-  "Laboratorium Jaringan Komputer",
+  "Lab. TK Barat I/01",
+  "Lab. TK Barat I/02",
+  "Lab. TK Barat I/04",
+  "Lab. TK Timur I/01",
+  "Lab. TK Timur I/02",
+  "Lab. TK Timur II/01",
 ];
 
 interface FormState {
@@ -142,17 +142,6 @@ export function PenggunaanRuangLabPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
-      {/* <SectionHeader
-        title={
-          step === "masuk" ? "Check-In Laboratorium" : "Check-Out Laboratorium"
-        }
-        description={
-          step === "masuk"
-            ? "Catat penggunaan ruangan dan kondisi awal laboratorium"
-            : "Selesaikan sesi dan dokumentasikan kondisi akhir ruangan"
-        }
-      /> */}
-
       {/* Sesi Aktif Card */}
       {step === "keluar" && (
         <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-200 rounded-2xl p-6">

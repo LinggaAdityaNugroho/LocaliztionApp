@@ -42,7 +42,7 @@ export function RiwayatPenggunaanRuangPage() {
   const fetchRiwayat = async () => {
     try {
       setLoading(true);
-      const response = await api.get("ruang/masuk");
+      const response = await api.get("mahasiswa/riwayat-ruang");
       setData(response.data.data || []);
     } catch (error) {
       console.error(error);

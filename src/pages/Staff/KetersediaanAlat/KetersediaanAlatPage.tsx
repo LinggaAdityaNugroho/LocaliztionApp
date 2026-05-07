@@ -15,6 +15,15 @@ import {
   ChevronRight,
   Pencil,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+
+import { DevicePagination } from "../../../components/molecules/DevicePagination";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -25,6 +34,7 @@ import { InventoryTemplate } from "../../../layouts/InventoryTemplate";
 import { StatCard } from "../../../components/molecules/StatCard";
 import { getColumns } from "./column";
 import api from "../../../services/api";
+import { data } from "react-router-dom";
 
 export function KetersediaanAlatPage() {
   const [alatList, setAlatList] = useState([]);
@@ -33,6 +43,7 @@ export function KetersediaanAlatPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [conditionFilter, setConditionFilter] = useState<string>("");
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role?.toLowerCase();
@@ -63,6 +74,16 @@ export function KetersediaanAlatPage() {
       alert("Gagal");
     }
   };
+
+  const conditionFiltered = useMemo(() => {
+    if (!alatList || !Array.isArray(alatList)) return [];
+
+    if (!conditionFilter || conditionFilter === "all") return alatList;
+
+    return alatList.filter((item: any) => {
+      return item.kondisi?.toLowerCase() === conditionFilter.toLowerCase();
+    });
+  }, [alatList, conditionFilter]);
 
   const stats = useMemo(
     () => ({
@@ -96,7 +117,7 @@ export function KetersediaanAlatPage() {
   );
 
   const table = useReactTable({
-    data: alatList,
+    data: conditionFiltered,
     columns,
     state: { sorting, globalFilter },
     onGlobalFilterChange: setGlobalFilter,
@@ -105,7 +126,7 @@ export function KetersediaanAlatPage() {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: { pagination: { pageSize: 5 } },
   });
 
   return (
@@ -178,28 +199,68 @@ export function KetersediaanAlatPage() {
           </div>
         )}
 
-        {/* CONTROLS SECTION */}
-        <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="relative flex-1 w-full max-w-md">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
-            />
-            <Input
-              placeholder="Cari alat, lokasi..."
-              className="pl-12 rounded-xl border-slate-200"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-            />
+        {/* Toolbar: Search, Status Filter & Page Size */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 flex-1">
+            <div className="relative w-full md:w-auto">
+              <Input
+                placeholder="Cari data..."
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="w-full md:w-64 rounded-xl border-slate-200 focus:ring-indigo-500 pl-4"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <Select
+                value={conditionFilter}
+                onValueChange={setConditionFilter}
+              >
+                <SelectTrigger className="w-full md:w-40 rounded-xl border-slate-200 bg-slate-50/50 font-medium text-sm transition-all hover:bg-slate-50">
+                  <SelectValue placeholder="Pilih Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="baik">Baik</SelectItem>
+                  <SelectItem value="rusak">Rusak</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="ghost"
+                onClick={fetchData}
+                className="rounded-xl hover:bg-slate-100 text-slate-500 shrink-0"
+                title="Refresh Data"
+              >
+                <RefreshCw
+                  size={18}
+                  className={loading ? "animate-spin" : ""}
+                />
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            onClick={fetchData}
-            className="rounded-xl gap-2 text-slate-500"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-            Refresh
-          </Button>
+
+          {/* Sisi Kanan: Page Size */}
+          <div className="flex items-center justify-end gap-3 border-t md:border-t-0 pt-3 md:pt-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Baris Per Halaman:
+            </span>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(v) => table.setPageSize(Number(v))}
+            >
+              <SelectTrigger className="w-20 rounded-xl border-slate-200 font-bold text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[5, 10, 25, 50].map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* TABLE SECTION */}
@@ -210,33 +271,8 @@ export function KetersediaanAlatPage() {
             columnsCount={columns.length}
           />
 
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Halaman {table.getState().pagination.pageIndex + 1} dari{" "}
-              {table.getPageCount()}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="rounded-lg gap-2"
-              >
-                <ChevronLeft size={14} /> Prev
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="rounded-lg gap-2"
-              >
-                Next <ChevronRight size={14} />
-              </Button>
-            </div>
-          </div>
+          {/* Molecule: Pagination */}
+          <DevicePagination table={table} />
         </div>
       </div>
     </InventoryTemplate>

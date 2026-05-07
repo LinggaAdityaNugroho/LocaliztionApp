@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { cn } from "./../../../lib/utils";
 import Webcam from "react-webcam";
 import {
@@ -20,6 +20,7 @@ import {
   Minus,
   CheckCircle2,
   ShoppingCart,
+  RefreshCw,
 } from "lucide-react";
 
 import { Badge } from "../../../components/ui/badge";
@@ -77,6 +78,7 @@ interface Alat {
   kode_tag_list?: string[];
   is_aset?: boolean;
 }
+
 interface CartItem extends Alat {
   selected_tags: string[];
   qty: number;
@@ -97,6 +99,25 @@ export default function PengajuanPinjamAlatPage() {
   const [tujuan, setTujuan] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const [captchaString, setCaptchaString] = useState("");
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+
+  const generateCaptcha = useCallback(() => {
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let result = "";
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaString(result);
+    setCaptchaInput("");
+  }, []);
+
+  useEffect(() => {
+    if (isFormStep) generateCaptcha();
+  }, [isFormStep, generateCaptcha]);
 
   const handleSelectGroup = async (name: string) => {
     setSelectedGroup(name);
@@ -130,19 +151,30 @@ export default function PengajuanPinjamAlatPage() {
   };
 
   const handleCheckout = async () => {
+    const isBooking = startTime !== "";
     if (!isFormStep) return setIsFormStep(true);
-
     if (!targetRoom) return alert("Pilih ruangan lab!");
     if (!tujuan.trim()) return alert("Isi tujuan penggunaan!");
+    if (!imageFile) return alert("Ambil foto kondisi alat terlebih dahulu!");
+    if (captchaInput.toUpperCase() !== captchaString)
+      return alert("Kode Captcha salah!");
 
-    if (!imageFile || !(imageFile instanceof File)) {
-      return alert("Ambil foto kondisi alat terlebih dahulu!");
+    if (!isBooking && !imageFile) {
+      return alert("Harap ambil foto kondisi alat untuk peminjaman langsung!");
+    }
+
+    if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
+      return alert("Jam selesai harus lebih besar dari jam mulai!");
     }
 
     const formData = new FormData();
     formData.append("ruangan_lab", targetRoom);
     formData.append("tujuan", tujuan);
     formData.append("foto_before", imageFile);
+
+    if (imageFile) formData.append("foto_before", imageFile);
+    formData.append("waktu_mulai", startTime); // Kosong = Pinjam Sekarang
+    formData.append("waktu_selesai", endTime);
 
     const itemsPayload = cart.map((i) => ({
       id: i.id,
@@ -154,11 +186,8 @@ export default function PengajuanPinjamAlatPage() {
 
     try {
       setLoading(true);
-
       const response = await api.post("/peminjaman/ajukan", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (response.status === 201 || response.status === 200) {
@@ -168,16 +197,9 @@ export default function PengajuanPinjamAlatPage() {
         window.location.reload();
       }
     } catch (err: any) {
-      console.error("Error Detail:", err.response?.data);
-      const serverMessage = err.response?.data?.message;
-      const validationErrors = err.response?.data?.errors;
-
-      if (validationErrors) {
-        const errorMsg = Object.values(validationErrors).flat().join(", ");
-        alert(`❌ Validasi Gagal: ${errorMsg}`);
-      } else {
-        alert(`❌ Gagal: ${serverMessage || "Terjadi kesalahan server"}`);
-      }
+      alert(
+        `❌ Gagal: ${err.response?.data?.message || "Terjadi kesalahan server"}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -247,16 +269,8 @@ export default function PengajuanPinjamAlatPage() {
 
   return (
     <div className="container max-w-7xl py-10 space-y-10 min-h-screen">
-      {/* HEADER */}
+      {/* ... Header & Lab Groups tetap sama ... */}
       <header className="flex flex-col md:flex-row justify-between items-end gap-6 border-b pb-8">
-        {/* <div>
-          <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none mb-3">
-            SISTEM PEMINJAMAN
-          </Badge>
-          <h1 className="text-5xl font-black italic tracking-tighter uppercase leading-none">
-            E-INVENTORY <span className="text-indigo-600">POLINES</span>
-          </h1>
-        </div> */}
         {selectedGroup && (
           <Input
             placeholder="Cari alat..."
@@ -267,7 +281,6 @@ export default function PengajuanPinjamAlatPage() {
         )}
       </header>
 
-      {/* MAIN CONTENT */}
       {!selectedGroup ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {LAB_GROUPS.map((lab) => (
@@ -293,7 +306,6 @@ export default function PengajuanPinjamAlatPage() {
         </div>
       )}
 
-      {/* FLOATING CART BUTTON */}
       {cart.length > 0 && (
         <Button
           onClick={() => {
@@ -304,17 +316,16 @@ export default function PengajuanPinjamAlatPage() {
         >
           <div className="relative mr-4 bg-white/10 p-3 rounded-2xl">
             <ShoppingCart className="text-indigo-400" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900 font-black italic">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900 font-black italic text-white">
               {cart.length}
             </span>
           </div>
-          <span className="font-black uppercase tracking-[0.2em] text-sm italic">
+          <span className="font-black uppercase tracking-[0.2em] text-sm italic text-white">
             Review & Pinjam
           </span>
         </Button>
       )}
 
-      {/* DRAWER KERANJANG */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={setIsCartOpen}
@@ -323,63 +334,39 @@ export default function PengajuanPinjamAlatPage() {
         onNext={handleCheckout}
         loading={loading}
       >
-        {!isFormStep ? (
-          <div className="space-y-4">
-            {cart.map((item) => (
-              <div
-                key={item.id}
-                className="p-5 bg-slate-50 rounded-4xl border-2 border-slate-100 space-y-4"
-              >
-                <div className="flex justify-between">
-                  <span className="font-black uppercase italic text-xs text-slate-700">
-                    {item.nama_alat}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setCart(cart.filter((c) => c.id !== item.id))
-                    }
-                  >
-                    <Trash2 size={16} className="text-red-400" />
-                  </button>
-                </div>
-                {item.is_aset ? (
-                  <div className="space-y-2">
-                    {item.selected_tags.map((tag, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <Select
-                          value={tag}
-                          onValueChange={(v) => {
-                            const newTags = [...item.selected_tags];
-                            newTags[idx] = v;
-                            setCart(
-                              cart.map((c) =>
-                                c.id === item.id
-                                  ? { ...c, selected_tags: newTags }
-                                  : c,
-                              ),
-                            );
-                          }}
-                        >
-                          <SelectTrigger className="rounded-xl h-10 text-[10px] font-bold">
-                            <SelectValue placeholder="Pilih Kode Unit" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {item.kode_tag_list?.map((t) => (
-                              <SelectItem key={t} value={t}>
-                                {t}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {item.selected_tags.length > 1 && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-red-500"
-                            onClick={() => {
-                              const newTags = item.selected_tags.filter(
-                                (_, i) => i !== idx,
-                              );
+        {/* WRAPPER SCROLL AREA */}
+        <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar space-y-6">
+          {!isFormStep ? (
+            <div className="space-y-4">
+              {cart.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-5 bg-slate-50 rounded-4xl border-2 border-slate-100 space-y-4"
+                >
+                  <div className="flex justify-between">
+                    <span className="font-black uppercase italic text-xs text-slate-700">
+                      {item.nama_alat}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setCart(cart.filter((c) => c.id !== item.id))
+                      }
+                    >
+                      <Trash2
+                        size={16}
+                        className="text-red-400 hover:text-red-600 transition-colors"
+                      />
+                    </button>
+                  </div>
+                  {item.is_aset ? (
+                    <div className="space-y-2">
+                      {item.selected_tags.map((tag, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <Select
+                            value={tag}
+                            onValueChange={(v) => {
+                              const newTags = [...item.selected_tags];
+                              newTags[idx] = v;
                               setCart(
                                 cart.map((c) =>
                                   c.id === item.id
@@ -389,135 +376,238 @@ export default function PengajuanPinjamAlatPage() {
                               );
                             }}
                           >
-                            <Minus size={14} />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full rounded-xl border-dashed border-2 text-[10px] font-black"
-                      onClick={() =>
+                            <SelectTrigger className="rounded-xl h-10 text-[10px] font-bold">
+                              <SelectValue placeholder="Pilih Kode Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {item.kode_tag_list?.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                  {t}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {item.selected_tags.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const newTags = item.selected_tags.filter(
+                                  (_, i) => i !== idx,
+                                );
+                                setCart(
+                                  cart.map((c) =>
+                                    c.id === item.id
+                                      ? { ...c, selected_tags: newTags }
+                                      : c,
+                                  ),
+                                );
+                              }}
+                            >
+                              <Minus size={14} className="text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full rounded-xl border-dashed border-2 text-[10px] font-black"
+                        onClick={() =>
+                          setCart(
+                            cart.map((c) =>
+                              c.id === item.id
+                                ? {
+                                    ...c,
+                                    selected_tags: [...c.selected_tags, ""],
+                                  }
+                                : c,
+                            ),
+                          )
+                        }
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> TAMBAH UNIT
+                      </Button>
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      min="1"
+                      max={item.jumlah}
+                      value={item.qty}
+                      onChange={(e) =>
                         setCart(
                           cart.map((c) =>
                             c.id === item.id
-                              ? {
-                                  ...c,
-                                  selected_tags: [...c.selected_tags, ""],
-                                }
+                              ? { ...c, qty: parseInt(e.target.value) }
                               : c,
                           ),
                         )
                       }
-                    >
-                      <Plus className="w-3 h-3 mr-1" /> TAMBAH UNIT
-                    </Button>
-                  </div>
-                ) : (
-                  <Input
-                    type="number"
-                    min="1"
-                    max={item.jumlah}
-                    value={item.qty}
-                    onChange={(e) =>
-                      setCart(
-                        cart.map((c) =>
-                          c.id === item.id
-                            ? { ...c, qty: parseInt(e.target.value) }
-                            : c,
-                        ),
-                      )
-                    }
-                    className="h-10 rounded-xl font-bold"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
-                Lokasi Penggunaan
-              </label>
-              <Select onValueChange={setTargetRoom}>
-                <SelectTrigger className="h-14 rounded-2xl border-2">
-                  <SelectValue placeholder="Pilih Ruangan Lab" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RUANGAN_SPESIFIK.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
-                Tujuan Penggunaan
-              </label>
-              <Textarea
-                placeholder="Contoh: Praktikum Antena - Kelompok 4"
-                rows={3}
-                className="rounded-2xl border-2"
-                value={tujuan}
-                onChange={(e) => setTujuan(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
-                Foto Kondisi Alat
-              </label>
-              {!showCamera ? (
-                <div
-                  onClick={() => setShowCamera(true)}
-                  className="h-44 bg-slate-50 border-2 border-dashed rounded-4xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 overflow-hidden"
-                >
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      className="w-full h-full object-cover"
+                      className="h-10 rounded-xl font-bold"
                     />
-                  ) : (
-                    <>
-                      <CameraIcon className="text-indigo-500 mb-2" />
-                      <span className="text-[10px] font-bold uppercase text-slate-400">
-                        Ambil Foto
-                      </span>
-                    </>
                   )}
                 </div>
-              ) : (
-                <div className="relative h-64 rounded-4xl overflow-hidden shadow-xl">
-                  <Webcam
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="rounded-full"
-                      onClick={() => setShowCamera(false)}
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="rounded-full bg-white text-black hover:bg-slate-200"
-                      onClick={capture}
-                    >
-                      Jepret
-                    </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-6 pb-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
+                  Lokasi Penggunaan
+                </label>
+                <Select onValueChange={setTargetRoom}>
+                  <SelectTrigger className="h-14 rounded-2xl border-2">
+                    <SelectValue placeholder="Pilih Ruangan Lab" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUANGAN_SPESIFIK.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
+                  Tujuan Penggunaan
+                </label>
+                <Textarea
+                  placeholder="Contoh: Praktikum Antena"
+                  rows={3}
+                  className="rounded-2xl border-2"
+                  value={tujuan}
+                  onChange={(e) => setTujuan(e.target.value)}
+                />
+              </div>
+
+              <div className="p-5 bg-indigo-50/50 rounded-[2rem] border-2 border-indigo-100/50 space-y-3">
+                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1 block italic leading-none">
+                  Jadwal Pemesanan{" "}
+                  <span className="text-slate-400">(Opsional)</span>:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-bold text-slate-400 uppercase ml-1">
+                      Mulai / Booking:
+                    </p>
+                    <input
+                      type="datetime-local"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      onClick={(e) => e.currentTarget.showPicker()}
+                      className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 shadow-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-bold text-slate-400 uppercase ml-1">
+                      Estimasi Selesai:
+                    </p>
+                    <input
+                      type="datetime-local"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      onClick={(e) => e.currentTarget.showPicker()}
+                      className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 shadow-sm"
+                    />
                   </div>
                 </div>
-              )}
+                {!startTime && (
+                  <p className="text-[8px] text-amber-600 font-bold italic ml-1">
+                    * Kosongkan jika ingin meminjam langsung (sekarang).
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
+                  Foto Kondisi Alat
+                </label>
+                {!showCamera ? (
+                  <div
+                    onClick={() => setShowCamera(true)}
+                    className="h-44 bg-slate-50 border-2 border-dashed rounded-4xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 overflow-hidden transition-all"
+                  >
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <>
+                        <CameraIcon className="text-indigo-500 mb-2" />
+                        <span className="text-[10px] font-bold uppercase text-slate-400">
+                          Ambil Foto
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative h-64 rounded-4xl overflow-hidden shadow-xl border-2 border-indigo-100">
+                    <Webcam
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="rounded-full shadow-lg"
+                        onClick={() => setShowCamera(false)}
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="rounded-full bg-white text-black hover:bg-slate-200 shadow-lg"
+                        onClick={capture}
+                      >
+                        Jepret
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* CAPTCHA SECTION */}
+              <div className="space-y-3 p-4 bg-indigo-50/50 rounded-3xl border-2 border-indigo-100">
+                <label className="text-[10px] font-black uppercase text-indigo-400 ml-1">
+                  Verifikasi Keamanan
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-white h-12 rounded-2xl flex items-center justify-center border-2 border-slate-200 select-none tracking-[0.4em] font-black italic text-lg text-indigo-600 shadow-sm">
+                    {captchaString}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={generateCaptcha}
+                    className="rounded-2xl h-12 w-12 border-2 hover:bg-white transition-all"
+                  >
+                    <RefreshCw className="w-4 h-4 text-indigo-500" />
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Ketik kode di atas..."
+                  className="h-12 rounded-2xl border-2 text-center font-bold uppercase tracking-widest focus-visible:ring-indigo-500 bg-white"
+                  value={captchaInput}
+                  onChange={(e) =>
+                    setCaptchaInput(e.target.value.toUpperCase())
+                  }
+                />
+                {captchaInput && captchaInput !== captchaString && (
+                  <p className="text-[9px] text-red-500 font-black uppercase text-center animate-pulse">
+                    Kode tidak cocok!
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </CartDrawer>
     </div>
   );

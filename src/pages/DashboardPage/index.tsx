@@ -10,6 +10,8 @@ import { CardReview } from "./CardReview";
 // import { Button } from "../../components/ui/button";
 import { ModalReview } from "./ModalReview";
 import { useTheme } from "../../components/themes/themes-provider";
+import { useEffect, useState } from "react";
+import { getProfile } from "../../services/user.service";
 // techLogos
 const techLogos = [
   {
@@ -17,8 +19,37 @@ const techLogos = [
   },
 ];
 
+interface UserProfile {
+  id: number;
+  email: string;
+  email_polines: string;
+}
+
 export function Dashboard() {
   const { theme } = useTheme();
+  const savedUser = localStorage.getItem("user");
+  const user: UserProfile | null = savedUser ? JSON.parse(savedUser) : null;
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const data = await getProfile();
+        // Set state ke data.user (sesuai struktur JSON kamu)
+
+        console.log("USER" + data.user);
+      } catch (err) {
+        console.error("Gagal load profil");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+
   return (
     <main className="w-full">
       <div className="flex flex-col flex-1 gap-4 p-4 lg:p-8">

@@ -1,10 +1,24 @@
 import { useState, useEffect, useMemo } from "react";
 import api from "../../../services/api";
+import {
+  X,
+  AlertCircle,
+  Check,
+  XCircle,
+  Clock,
+  Inbox,
+  Activity,
+  Calendar,
+} from "lucide-react";
+import Swal from "sweetalert2";
 
 export function PersetujuanPinjamPage() {
   const [dataPinjam, setDataPinjam] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [alasanTolak, setAlasanTolak] = useState("");
 
   const fetchPeminjaman = async () => {
     try {
@@ -22,123 +36,121 @@ export function PersetujuanPinjamPage() {
     fetchPeminjaman();
   }, []);
 
-  const handleSetujui = async (id: number) => {
-    if (
-      !confirm("✅ Setujui peminjaman ini? Stok alat akan otomatis berkurang.")
-    )
-      return;
+  const handleSetujui = async (id: number, currentStatus: string) => {
+    const isBooking =
+      currentStatus === "booking" || currentStatus === "pesanan";
+
+    const result = await Swal.fire({
+      title: "Konfirmasi Persetujuan",
+      text: isBooking
+        ? "Setujui pesanan ini? Status akan menjadi 'Terjadwal'."
+        : "Setujui peminjaman ini? Stok akan langsung berkurang.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      confirmButtonText: "Ya, Setujui!",
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       setProcessing(id);
       await api.post(`/peminjaman/${id}/setujui`);
-      alert("✅ Peminjaman berhasil disetujui!");
+      Swal.fire("Berhasil!", "Peminjaman telah disetujui.", "success");
       fetchPeminjaman();
     } catch (err: any) {
-      alert("❌ " + (err.response?.data?.message || "Gagal menyetujui"));
+      Swal.fire(
+        "Gagal!",
+        err.response?.data?.message || "Gagal menyetujui",
+        "error",
+      );
     } finally {
       setProcessing(null);
     }
   };
 
-  const handleTolak = async (id: number) => {
-    const alasan = prompt("Masukkan alasan penolakan:");
-    if (!alasan || !alasan.trim()) return;
+  const openRejectModal = (id: number) => {
+    setSelectedId(id);
+    setIsRejectModalOpen(true);
+    setAlasanTolak("");
+  };
+
+  const confirmTolak = async () => {
+    if (!alasanTolak.trim() || !selectedId) return;
 
     try {
-      setProcessing(id);
-      await api.post(`/peminjaman/${id}/tolak`, { alasan });
-      alert("✅ Peminjaman berhasil ditolak!");
+      setProcessing(selectedId);
+      await api.post(`/peminjaman/${selectedId}/tolak`, {
+        alasan: alasanTolak,
+      });
+      setIsRejectModalOpen(false);
+      Swal.fire("Ditolak", "Pengajuan telah ditolak.", "info");
       fetchPeminjaman();
     } catch (err: any) {
-      alert("❌ " + (err.response?.data?.message || "Gagal menolak"));
+      Swal.fire(
+        "Gagal!",
+        err.response?.data?.message || "Gagal menolak",
+        "error",
+      );
     } finally {
       setProcessing(null);
+      setSelectedId(null);
     }
   };
 
-  // Statistik
   const stats = useMemo(() => {
     const total = dataPinjam.length;
     const pending = dataPinjam.filter(
       (item: any) => item.status === "pending",
     ).length;
+    const booking = dataPinjam.filter(
+      (item: any) => item.status === "booking" || item.status === "pesanan",
+    ).length;
     const approved = dataPinjam.filter(
-      (item: any) => item.status === "approved",
+      (item: any) => item.status === "approved" || item.status === "disetujui",
     ).length;
     const ongoing = dataPinjam.filter(
       (item: any) => item.status === "ongoing",
     ).length;
 
-    return { total, pending, approved, ongoing };
+    return { total, pending, approved, ongoing, booking };
   }, [dataPinjam]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       {/* STATISTICS CARDS */}
-      {!loading && dataPinjam.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                  Total Pengajuan
-                </p>
-                <p className="text-2xl font-black text-blue-900 mt-1">
-                  {stats.total}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                <i className="bi bi-inbox text-white text-xl"></i>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">
-                  Menunggu
-                </p>
-                <p className="text-2xl font-black text-amber-900 mt-1">
-                  {stats.pending}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
-                <i className="bi bi-clock-history text-white text-xl"></i>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                  Disetujui
-                </p>
-                <p className="text-2xl font-black text-emerald-900 mt-1">
-                  {stats.approved}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center">
-                <i className="bi bi-check-circle-fill text-white text-xl"></i>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                  Berlangsung
-                </p>
-                <p className="text-2xl font-black text-indigo-900 mt-1">
-                  {stats.ongoing}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
-                <i className="bi bi-arrow-repeat text-white text-xl"></i>
-              </div>
-            </div>
-          </div>
+      {!loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard
+            title="Total"
+            value={stats.total}
+            color="blue"
+            icon={<Inbox size={20} />}
+          />
+          <StatCard
+            title="Booking"
+            value={stats.booking}
+            color="purple"
+            icon={<Calendar size={20} />}
+          />
+          <StatCard
+            title="Menunggu"
+            value={stats.pending}
+            color="amber"
+            icon={<Clock size={20} />}
+          />
+          <StatCard
+            title="Disetujui"
+            value={stats.approved}
+            color="emerald"
+            icon={<Check size={20} />}
+          />
+          <StatCard
+            title="Berlangsung"
+            value={stats.ongoing}
+            color="indigo"
+            icon={<Activity size={20} />}
+          />
         </div>
       )}
 
@@ -146,173 +158,214 @@ export function PersetujuanPinjamPage() {
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-2 border-slate-100">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+            <thead className="bg-slate-900 text-white text-left">
               <tr>
-                <th className="p-4 text-left text-xs font-bold uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="p-4 text-left text-xs font-bold uppercase tracking-wider">
-                  Mahasiswa
-                </th>
-                <th className="p-4 text-left text-xs font-bold uppercase tracking-wider">
+                <th className="p-5 text-xs font-black uppercase">ID</th>
+                <th className="p-5 text-xs font-black uppercase">Mahasiswa</th>
+                <th className="p-5 text-xs font-black uppercase">
                   Lab & Tujuan
                 </th>
-                <th className="p-4 text-left text-xs font-bold uppercase tracking-wider">
-                  Daftar Alat
-                </th>
-                <th className="p-4 text-left text-xs font-bold uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="p-4 text-center text-xs font-bold uppercase tracking-wider">
+                <th className="p-5 text-xs font-black uppercase">Alat</th>
+                <th className="p-5 text-xs font-black uppercase">Status</th>
+                <th className="p-5 text-center text-xs font-black uppercase">
                   Aksi
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="p-20 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="animate-spin h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
-                      <p className="text-slate-400 font-semibold text-sm">
-                        Memuat data pengajuan...
-                      </p>
+              {dataPinjam.map((item: any) => (
+                <tr
+                  key={item.id}
+                  className="hover:bg-slate-50 transition-colors"
+                >
+                  <td className="p-5 font-bold text-slate-400 text-sm">
+                    #{item.id}
+                  </td>
+                  <td className="p-5">
+                    <div className="font-bold text-slate-800">
+                      {item.user?.name}
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">
+                      {item.user?.nim_nip || "No NIM"}
                     </div>
                   </td>
-                </tr>
-              ) : dataPinjam.length > 0 ? (
-                dataPinjam.map((item: any) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-indigo-50/50 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
-                        <i className="bi bi-hash text-slate-600 text-xs"></i>
-                        <span className="font-bold text-slate-700">
-                          {item.id}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="p-4">
-                      <div className="font-bold text-slate-900">
-                        {item.user?.name}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-1 font-mono">
-                        {item.user?.nim_nip || "-"}
-                      </div>
-                    </td>
-
-                    <td className="p-4">
-                      <div className="font-bold text-indigo-600 text-sm">
-                        {item.ruangan_lab}
-                      </div>
-                      <div className="text-xs text-slate-600 italic mt-1">
-                        <i className="bi bi-quote text-slate-400"></i>{" "}
-                        {item.tujuan_penggunaan}
-                      </div>
-                    </td>
-
-                    <td className="p-4">
-                      <div className="flex flex-col gap-1.5">
-                        {item.details?.map((det: any) => (
-                          <div
-                            key={det.id}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
-                          >
-                            <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
-                            <span className="font-semibold text-slate-700">
-                              {det.alat?.nama_alat}
-                            </span>
-                            <span className="font-black text-indigo-600">
-                              ×{det.jumlah_pinjam}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-
-                    <td className="p-4">
-                      {item.status === "pending" && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg">
-                          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-                          <span className="text-xs font-bold">Menunggu</span>
+                  <td className="p-5">
+                    <div className="font-bold text-indigo-600 text-sm">
+                      {item.ruangan_lab}
+                    </div>
+                    <div className="text-xs text-slate-500 truncate max-w-[150px] italic">
+                      "{item.keperluan}"
+                    </div>
+                  </td>
+                  <td className="p-5">
+                    <div className="space-y-1">
+                      {item.details?.map((det: any) => (
+                        <div
+                          key={det.id}
+                          className="text-[11px] font-medium text-slate-600 flex items-center gap-1"
+                        >
+                          <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                          {det.alat?.nama_alat}{" "}
+                          <span className="font-bold text-slate-900">
+                            (x{det.jumlah_pinjam})
+                          </span>
                         </div>
-                      )}
-                      {item.status === "approved" && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg">
-                          <i className="bi bi-check-circle-fill text-xs"></i>
-                          <span className="text-xs font-bold">Disetujui</span>
-                        </div>
-                      )}
-                      {item.status === "ongoing" && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg">
-                          <i className="bi bi-hourglass-split text-xs"></i>
-                          <span className="text-xs font-bold">Berlangsung</span>
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="p-4">
-                      {item.status === "pending" ? (
-                        <div className="flex items-center justify-center gap-2">
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-5">
+                    <StatusBadge
+                      status={item.status}
+                      jenis={item.status_peminjaman}
+                    />
+                  </td>
+                  <td className="p-5">
+                    <div className="flex justify-center gap-2">
+                      {item.status === "pending" ||
+                      item.status === "booking" ||
+                      item.status === "pesanan" ? (
+                        <>
                           <button
-                            onClick={() => handleSetujui(item.id)}
+                            onClick={() => handleSetujui(item.id, item.status)}
                             disabled={processing === item.id}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-lg"
+                            className="w-9 h-9 flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-100 transition-all disabled:opacity-50"
                           >
                             {processing === item.id ? (
-                              <>
-                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                                <span>Proses...</span>
-                              </>
+                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
                             ) : (
-                              <>
-                                <i className="bi bi-check-circle-fill"></i>
-                                <span>Setujui</span>
-                              </>
+                              <Check size={18} />
                             )}
                           </button>
-
                           <button
-                            onClick={() => handleTolak(item.id)}
+                            onClick={() => openRejectModal(item.id)}
                             disabled={processing === item.id}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-lg"
+                            className="w-9 h-9 flex items-center justify-center bg-white border-2 border-red-100 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all disabled:opacity-50"
                           >
-                            <i className="bi bi-x-circle-fill"></i>
-                            <span>Tolak</span>
+                            <X size={18} />
                           </button>
-                        </div>
+                        </>
                       ) : (
-                        <div className="text-center text-xs text-slate-400 font-semibold">
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
                           Selesai
-                        </div>
+                        </span>
                       )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="p-20">
-                    <div className="flex flex-col items-center">
-                      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                        <i className="bi bi-inbox text-4xl text-slate-300"></i>
-                      </div>
-                      <h3 className="text-xl font-black text-slate-400 mb-2">
-                        Tidak Ada Pengajuan
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        Belum ada peminjaman yang menunggu persetujuan
-                      </p>
                     </div>
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
+          {dataPinjam.length === 0 && !loading && (
+            <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-sm">
+              Data Tidak Ditemukan
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* REJECT MODAL */}
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => !processing && setIsRejectModalOpen(false)}
+          ></div>
+          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden p-8 border border-slate-100">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
+                <AlertCircle size={28} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-800 leading-none">
+                  Tolak Pengajuan
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 font-bold uppercase">
+                  ID Peminjaman #{selectedId}
+                </p>
+              </div>
+            </div>
+
+            <textarea
+              value={alasanTolak}
+              onChange={(e) => setAlasanTolak(e.target.value)}
+              placeholder="Berikan alasan penolakan..."
+              className="w-full h-32 p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-red-500 focus:ring-0 transition-all resize-none text-sm font-medium mb-6"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsRejectModalOpen(false)}
+                className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmTolak}
+                disabled={!alasanTolak.trim() || processing !== null}
+                className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-200 transition-all disabled:opacity-50"
+              >
+                {processing ? "Loading..." : "Konfirmasi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// SUB-COMPONENTS UNTUK KEBERSIHAN KODE
+function StatCard({ title, value, color, icon }: any) {
+  const colors: any = {
+    blue: "from-blue-500 to-blue-600 shadow-blue-100 text-blue-600",
+    purple: "from-purple-500 to-purple-600 shadow-purple-100 text-purple-600",
+    amber: "from-amber-500 to-amber-600 shadow-amber-100 text-amber-600",
+    emerald:
+      "from-emerald-500 to-emerald-600 shadow-emerald-100 text-emerald-600",
+    indigo: "from-indigo-500 to-indigo-600 shadow-indigo-100 text-indigo-600",
+  };
+
+  return (
+    <div className="bg-white border-2 border-slate-50 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all group">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">
+            {title}
+          </p>
+          <p className="text-3xl font-black text-slate-800">{value}</p>
+        </div>
+        <div
+          className={`w-10 h-10 rounded-2xl flex items-center justify-center bg-slate-50 ${colors[color].split(" ").pop()} group-hover:scale-110 transition-transform`}
+        >
+          {icon}
         </div>
       </div>
     </div>
+  );
+}
+
+function StatusBadge({ status, jenis }: { status: string; jenis?: string }) {
+  const isPesanan =
+    status === "booking" || status === "pesanan" || status === "approved";
+
+  const styles: any = {
+    pending: "bg-amber-100 text-amber-700 border-amber-200",
+    booking: "bg-purple-100 text-purple-700 border-purple-200",
+    pesanan: "bg-purple-100 text-purple-700 border-purple-200",
+    approved: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    disetujui: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    ongoing: "bg-indigo-600 text-white border-indigo-700",
+    rejected: "bg-red-100 text-red-700 border-red-200",
+  };
+
+  const label =
+    status === "approved" || status === "disetujui" ? "📅 Terjadwal" : status;
+
+  return (
+    <span
+      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-b-2 ${styles[status] || "bg-slate-100"}`}
+    >
+      {label}
+    </span>
   );
 }

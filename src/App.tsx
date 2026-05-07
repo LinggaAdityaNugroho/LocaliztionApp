@@ -57,7 +57,7 @@ function App() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/alat" element={<AlatTable />} />
           <Route
-            path="/riwayat-peminjaman-alat"
+            path="staff/riwayat-peminjaman-alat"
             element={<RiwayatPeminjamanAlat />}
           />
           <Route
@@ -74,6 +74,7 @@ function App() {
           <Route path="/class" element={<ClassPage />} />
 
           <Route path="*" element={<ProtectedNotFoundPage />} />
+
           {/* mahasiswa */}
           <Route path="/peminjaman-aktif" element={<PeminjamanPage />} />
           <Route path="/pengembalian-alat" element={<PengembalianAlatPage />} />

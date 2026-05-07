@@ -8,7 +8,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarFooter,
-  SidebarProvider,
 } from "../../ui/sidebar";
 
 import {
@@ -28,17 +27,28 @@ import {
   IconDeviceAirtag,
   IconUser,
   IconHistory,
-  IconFolder,
   IconChevronUp,
   IconSchool,
   IconAlertTriangle,
   IconBoxSeam,
   IconFileCheck,
   IconDoorEnter,
-  IconArmchair,
+  IconClock,
+  IconArrowBackUp,
+  IconFilePlus,
+  IconCalendarTime,
   IconTool,
 } from "@tabler/icons-react";
-import { getProfile } from "../../../services/user.service.ts";
+import api from "../../../services/api.ts";
+
+interface UserData {
+  id: number;
+  email: string;
+  email_polines: string;
+  avatar?: string;
+  nama?: string;
+  role?: string; // Tambahkan role untuk filter menu
+}
 
 const items = [
   { title: "Home", url: "/dashboard", icon: IconHome },
@@ -56,7 +66,6 @@ const items = [
     icon: IconSchool,
     roles: ["mahasiswa", "dosen"],
   },
-
   {
     title: "Ketersediaan Alat",
     url: "/ketersediaan-alat",
@@ -77,7 +86,7 @@ const items = [
   },
   {
     title: "Riwayat Peminjaman Alat",
-    url: "/riwayat-peminjaman-alat",
+    url: "staff/riwayat-peminjaman-alat",
     icon: IconTool,
     roles: ["admin", "staff"],
   },
@@ -90,61 +99,65 @@ const items = [
   {
     title: "Peminjaman Aktif",
     url: "/peminjaman-aktif",
-    icon: IconAlertTriangle,
+    icon: IconClock,
     roles: ["admin", "mahasiswa"],
   },
   {
     title: "Pengembalian Alat",
     url: "/pengembalian-alat",
-    icon: IconAlertTriangle,
+    icon: IconArrowBackUp,
     roles: ["admin", "mahasiswa"],
   },
   {
     title: "Penggunaan Ruang Lab",
     url: "/penggunaan-ruang-lab",
-    icon: IconAlertTriangle,
-    roles: ["admin", "mahasiswa"],
-  },
-  {
-    title: "Riwayat Peminjaman Alat",
-    url: "/riwayat-peminjaman-alat",
-    icon: IconAlertTriangle,
+    icon: IconDoorEnter,
     roles: ["admin", "mahasiswa"],
   },
   {
     title: "Riwayat Penggunaan Ruang",
     url: "/riwayat-penggunaan-ruang",
-    icon: IconAlertTriangle,
+    icon: IconCalendarTime,
     roles: ["admin", "mahasiswa"],
   },
   {
     title: "Pengajuan Pinjam Alat",
     url: "/pengajuan-pinjam-alat",
-    icon: IconAlertTriangle,
+    icon: IconFilePlus,
     roles: ["admin", "mahasiswa"],
   },
 ];
 
 export function MySidebar() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    avatar: "",
-    role: "",
+
+  // Ambil user awal dari localStorage
+  const [userData, setUserData] = useState<UserData | null>(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
   });
 
   useEffect(() => {
-    getProfile()
-      .then((data) => setProfile(data))
-      .catch((err) => console.error("Error profile:", err));
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get("mahasiswa");
+        const freshData = res.data.data.user;
+        setUserData(freshData);
+        localStorage.setItem("user", JSON.stringify(freshData));
+      } catch (error) {
+        console.error("Failed to fetch fresh profile data", error);
+      }
+    };
+    fetchProfile();
   }, []);
 
+  // Filter items berdasarkan role user (asumsi role ada di userData)
   const filteredItems = items.filter((item) => {
-    if (!item.roles) return true;
-    return item.roles.includes(profile.role?.toLowerCase());
+    if (!item.roles) return true; // Jika tidak ada batasan role, tampilkan
+    return item.roles.includes(userData?.role?.toLowerCase() || "");
   });
 
+  // Pisahkan menu
   const mainItems = filteredItems.filter((i) =>
     ["Home", "Map", "History", "Class"].includes(i.title),
   );
@@ -152,8 +165,8 @@ export function MySidebar() {
     (i) => !["Home", "Map", "History", "Class"].includes(i.title),
   );
 
-  const logOut = async () => {
-    localStorage.removeItem("token");
+  const logOut = () => {
+    localStorage.clear();
     window.location.replace("/");
   };
 
@@ -184,6 +197,7 @@ export function MySidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
+        {/* Menu Utama */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
             Menu Utama
@@ -208,6 +222,7 @@ export function MySidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
+        {/* Manajemen Section */}
         {adminItems.length > 0 && (
           <SidebarGroup className="mt-4">
             <SidebarGroupLabel className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -222,8 +237,8 @@ export function MySidebar() {
                     className="hover:bg-indigo-50 group rounded-lg"
                   >
                     <Link to={item.url} className="flex items-center py-2 px-3">
-                      <item.icon size={20} className="text-slate-500 " />
-                      <span className="ml-3 font-medium text-slate-600 ">
+                      <item.icon size={20} className="text-slate-500" />
+                      <span className="ml-3 font-medium text-slate-600">
                         {item.title}
                       </span>
                     </Link>
@@ -244,24 +259,21 @@ export function MySidebar() {
                   size="lg"
                   className="w-full hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all shadow-sm active:scale-95 px-2"
                 >
-                  {/* AVATAR: Tetap tampil karena berada di level utama SidebarMenuButton */}
                   <div className="relative flex shrink-0">
                     <img
-                      src={profile.avatar || "/img/profile.png"}
+                      src={userData?.avatar || "/img/profile.png"}
                       alt="Profile"
                       className="h-8 w-8 rounded-full object-cover ring-2 ring-white shadow-sm"
                     />
                   </div>
-
                   <div className="grid flex-1 text-left text-sm leading-tight ml-3 group-data-[collapsible=icon]:hidden transition-all">
                     <span className="truncate font-bold text-slate-800">
-                      {profile.name || "User"}
+                      {userData?.nama || "User"}
                     </span>
-                    <span className="truncate text-[10px] font-medium text-slate-400  tracking-tighter ">
-                      {profile.role || "No Role"}
+                    <span className="truncate text-[10px] font-medium text-slate-400 tracking-tighter">
+                      {userData?.email_polines || "No Email"}
                     </span>
                   </div>
-
                   <IconChevronUp className="ml-auto size-4 text-slate-400 group-data-[collapsible=icon]:hidden" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -275,7 +287,10 @@ export function MySidebar() {
                 <DropdownMenuLabel className="font-normal px-4 py-3">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-bold text-slate-800">
-                      {profile.email}
+                      {userData?.email_polines}
+                    </p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">
+                      {userData?.role}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -290,10 +305,10 @@ export function MySidebar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={logOut}
-                  className="rounded-lg cursor-pointer py-2 px-4 text-red-600 focus:bg-red-50 focus:text-red-700 transition-colors"
+                  className="rounded-lg cursor-pointer py-2 px-4 text-red-600 focus:bg-red-50 focus:text-red-700"
                 >
                   <span className="font-bold text-sm tracking-widest">
-                    LogOut
+                    LOGOUT
                   </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
