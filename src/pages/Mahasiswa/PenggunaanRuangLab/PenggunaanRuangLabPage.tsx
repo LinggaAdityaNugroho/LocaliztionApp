@@ -1,4 +1,4 @@
-import React, {
+import {
   useState,
   type FormEvent,
   useEffect,
@@ -8,8 +8,22 @@ import React, {
 import api from "../../../services/api";
 import Swal from "sweetalert2";
 import Webcam from "react-webcam";
+import { Camera, DoorOpen, Loader2, CheckCircle2, X } from "lucide-react";
 
-// 1. DAFTAR RUANGAN SPESIFIK (Dropdown)
+import { Card } from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { PageLayout } from "../../../layouts/PageLayout";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { DatePicker } from "../../../components/atoms/DatePicker";
+
 const RUANGAN_SPESIFIK = [
   "Lab. TK Barat I/01",
   "Lab. TK Barat I/02",
@@ -29,12 +43,23 @@ interface FormState {
   fotoPreview: string | null;
 }
 
+const dataURLtoFile = (dataurl: string, filename: string): File => {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
 export function PenggunaanRuangLabPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [step, setStep] = useState<"masuk" | "keluar">("masuk");
   const [idLaporan, setIdLaporan] = useState<number | null>(null);
 
-  // Kamera States & Refs
   const webcamRef = useRef<Webcam>(null);
   const [showCamera, setShowCamera] = useState(false);
 
@@ -48,7 +73,6 @@ export function PenggunaanRuangLabPage() {
     fotoPreview: null,
   });
 
-  // Load sesi aktif dari localStorage
   useEffect(() => {
     const savedId = localStorage.getItem("active_session_id");
     const savedLab = localStorage.getItem("active_lab_name");
@@ -59,33 +83,36 @@ export function PenggunaanRuangLabPage() {
     }
   }, []);
 
-  // Fungsi Ambil Foto (Capture)
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
-      setFormData((prev) => ({ ...prev, fotoPreview: imageSrc }));
+      try {
+        const fileName = `ruang_${step}_${Date.now()}.jpg`;
+        const convertedFile = dataURLtoFile(imageSrc, fileName);
 
-      // Ubah Base64 ke File
-      fetch(imageSrc)
-        .then((res) => res.blob())
-        .then((blob) => {
-          const file = new File([blob], `ruang_${step}_${Date.now()}.jpg`, {
-            type: "image/jpeg",
-          });
-          setFormData((prev) => ({ ...prev, foto: file }));
-          setShowCamera(false);
-        });
+        setFormData((prev) => ({
+          ...prev,
+          fotoPreview: imageSrc,
+          foto: convertedFile,
+        }));
+        setShowCamera(false);
+      } catch (error) {
+        console.error("Gagal mengonversi gambar kamera:", error);
+      }
     }
-  }, [webcamRef, step]);
+  }, [step]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.foto)
-      return Swal.fire(
-        "Peringatan",
-        "Harap ambil foto dokumentasi!",
-        "warning",
-      );
+
+    if (!formData.foto) {
+      return Swal.fire({
+        title: "Dokumentasi Diperlukan",
+        text: "Harap ambil foto kondisi fisik ruangan sebelum menyimpan data!",
+        icon: "warning",
+        confirmButtonColor: "#18181b",
+      });
+    }
 
     setLoading(true);
     const data = new FormData();
@@ -99,261 +126,285 @@ export function PenggunaanRuangLabPage() {
         data.append("jam_selesai", formData.jam_selesai);
         data.append("foto_before", formData.foto);
 
-        const res = await api.post("/ruang/masuk", data);
+        const res = await api.post("/ruang/masuk", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
 
-        const newId = res.data.data.id;
-        setIdLaporan(newId);
-        localStorage.setItem("active_session_id", newId.toString());
-        localStorage.setItem("active_lab_name", formData.laboratorium);
+        const newId = res.data?.data?.id || res.data?.id;
+        if (newId) {
+          setIdLaporan(newId);
+          localStorage.setItem("active_session_id", newId.toString());
+          localStorage.setItem("active_lab_name", formData.laboratorium);
+        }
 
         setStep("keluar");
-        // Reset form tapi tetap pertahankan nama lab untuk sesi keluar nanti
         setFormData({
-          ...formData,
-          foto: null,
-          fotoPreview: null,
+          laboratorium: formData.laboratorium,
           kondisi: "",
+          keperluan: "",
           jam_mulai: "",
           jam_selesai: "",
+          foto: null,
+          fotoPreview: null,
         });
-        Swal.fire("Berhasil!", "✅ Check-in berhasil disimpan.", "success");
+
+        Swal.fire({
+          title: "Check-In Sukses",
+          text: "Selamat mempraktikkan materi lab. Sesi pemakaian ruang telah aktif.",
+          icon: "success",
+          confirmButtonColor: "#18181b",
+        });
       } else {
         data.append("kondisi_keluar", formData.kondisi);
         data.append("foto_after", formData.foto);
 
-        await api.post(`/ruang/keluar/${idLaporan}`, data);
+        await api.post(`/ruang/keluar/${idLaporan}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
 
         localStorage.removeItem("active_session_id");
         localStorage.removeItem("active_lab_name");
 
-        Swal.fire(
-          "Berhasil!",
-          "✅ Check-out berhasil. Terima kasih.",
-          "success",
-        ).then(() => window.location.reload());
+        Swal.fire({
+          title: "Check-Out Berhasil",
+          text: "Laporan akhir kondisi laboratorium telah direkam. Terima kasih.",
+          icon: "success",
+          confirmButtonColor: "#18181b",
+        }).then(() => window.location.reload());
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Gagal mengirim data.";
-      Swal.fire("Gagal!", "❌ " + msg, "error");
+      const msg =
+        err.response?.data?.message ||
+        "Terjadi kegagalan komunikasi dengan server API.";
+      Swal.fire("Sistem Gagal", msg, "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
-      {/* Sesi Aktif Card */}
-      {step === "keluar" && (
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-200 rounded-2xl p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-200">
-              <i className="bi bi-door-open text-white text-xl"></i>
-            </div>
-            <div>
-              <h3 className="font-black text-orange-900 text-lg mb-1">
-                Sesi Aktif
-              </h3>
-              <p className="text-sm text-orange-700 mb-3 font-medium">
-                Anda sedang menggunakan{" "}
-                <span className="font-black underlineDecoration-orange-500">
+    <PageLayout
+      pageTitle="Logbook Ruangan"
+      pageDescription="Lakukan pencatatan check-in awal masuk dan check-out akhir"
+    >
+      <div className="py-6 w-full space-y-6 antialiased text-left bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
+        {step === "keluar" && (
+          <div className="bg-zinc-950 dark:bg-zinc-900 text-white p-6 border-2 border-zinc-950 dark:border-zinc-800  animate-in fade-in zoom-in duration-200 relative overflow-hidden rounded-none">
+            <div className="flex items-start gap-4 relative z-10">
+              <div className="w-11 h-11 bg-zinc-900 border-2 border-zinc-800 text-white flex items-center justify-center shrink-0 rounded-none">
+                <DoorOpen size={18} className="text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-mono font-black text-[9px] tracking-widest text-zinc-500">
+                  SESI PEMAKAIAN BERJALAN
+                </h3>
+                <p className="text-lg font-black tracking-tight text-white mt-0.5">
                   {formData.laboratorium}
-                </span>
-              </p>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/50 rounded-lg border border-orange-200">
-                <span className="text-[10px] font-black text-orange-800 uppercase tracking-widest">
-                  ID Sesi: #{idLaporan}
-                </span>
+                </p>
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-800 font-mono text-[9px] font-black text-zinc-400 tracking-wider rounded-none">
+                  ID LOG: #{idLaporan}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* FORM CARD */}
-      <div className="bg-white rounded-3xl shadow-xl border-2 border-slate-100 overflow-hidden">
-        <div
-          className={`p-6 text-white flex justify-between items-center transition-all ${
-            step === "masuk" ? "bg-slate-900" : "bg-orange-600"
-          }`}
-        >
-          <div>
-            <h2 className="text-2xl font-black uppercase tracking-tight leading-none mb-1">
-              {step === "masuk" ? "Form Check-In" : "Form Check-Out"}
-            </h2>
-            <p className="text-xs opacity-70 italic font-medium">
-              Lengkapi dokumentasi ruangan laboratorium
-            </p>
-          </div>
-        </div>
+        <Card className="p-0 border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+          <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
+            {step === "masuk" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="flex flex-col gap-1.5 text-left">
+                  <Label className="font-mono font-black text-xs text-zinc-700 dark:text-zinc-300">
+                    Pilih Laboratorium
+                  </Label>
+                  <Select
+                    value={formData.laboratorium}
+                    onValueChange={(val) =>
+                      setFormData({ ...formData, laboratorium: val })
+                    }
+                  >
+                    <SelectTrigger className="rounded-none h-11 border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950 font-mono text-xs font-bold">
+                      <SelectValue placeholder="Pilih Ruang Lab" />
+                    </SelectTrigger>
+                    <SelectContent className="border-2 border-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 font-mono font-black text-xs text-zinc-800 dark:text-zinc-200 rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                      {RUANGAN_SPESIFIK.map((room) => (
+                        <SelectItem
+                          key={room}
+                          value={room}
+                          className="cursor-pointer rounded-none focus:bg-zinc-100 dark:focus:bg-zinc-900"
+                        >
+                          {room}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          {step === "masuk" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* DROPDOWN RUANGAN */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                  Nama Laboratorium
-                </label>
-                <select
-                  required
-                  className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-indigo-500 bg-slate-50 font-bold transition-all"
-                  onChange={(e) =>
-                    setFormData({ ...formData, laboratorium: e.target.value })
+                <div className="flex flex-col gap-1.5 text-left">
+                  <Label className="font-mono font-black text-xs text-zinc-700 dark:text-zinc-300">
+                    Tujuan Penggunaan
+                  </Label>
+                  <Input
+                    type="text"
+                    required
+                    value={formData.keperluan}
+                    placeholder="Misal: Praktikum Embedded System BLE"
+                    onChange={(e) =>
+                      setFormData({ ...formData, keperluan: e.target.value })
+                    }
+                    className="rounded-none h-11 border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950 font-mono text-xs font-bold shadow-none"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5 text-left">
+                  <DatePicker
+                    label="Estimasi Mulai Praktikum"
+                    value={formData.jam_mulai}
+                    placeholder="Pilih Tanggal & Waktu Mulai"
+                    onChange={(localDate) =>
+                      setFormData({ ...formData, jam_mulai: localDate })
+                    }
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5 text-left">
+                  <DatePicker
+                    label="Estimasi Mulai Praktikum"
+                    value={formData.jam_selesai}
+                    placeholder="Pilih Tanggal & Waktu Mulai"
+                    onChange={(localDate) =>
+                      setFormData({ ...formData, jam_selesai: localDate })
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="flex flex-col gap-1.5 text-left">
+                <Label className="font-mono font-black text-xs text-zinc-700 dark:text-zinc-300">
+                  Kondisi Ruangan ({step === "masuk" ? "Masuk" : "Keluar"})
+                </Label>
+                <Select
+                  value={formData.kondisi}
+                  onValueChange={(val) =>
+                    setFormData({ ...formData, kondisi: val })
                   }
                 >
-                  <option value="">-- Pilih Ruangan --</option>
-                  {RUANGAN_SPESIFIK.map((room) => (
-                    <option key={room} value={room}>
-                      {room}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                  Tujuan Penggunaan
-                </label>
-                <input
-                  type="text"
-                  className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-indigo-500 bg-slate-50 font-bold"
-                  placeholder="Misal: Praktikum Mikrokontroler"
-                  required
-                  onChange={(e) =>
-                    setFormData({ ...formData, keperluan: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                  Jam Mulai
-                </label>
-                <input
-                  type="datetime-local"
-                  className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-indigo-500 bg-slate-50 font-bold text-xs"
-                  required
-                  onChange={(e) =>
-                    setFormData({ ...formData, jam_mulai: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                  Jam Selesai
-                </label>
-                <input
-                  type="datetime-local"
-                  className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-indigo-500 bg-slate-50 font-bold text-xs"
-                  required
-                  onChange={(e) =>
-                    setFormData({ ...formData, jam_selesai: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                Kondisi Ruangan ({step === "masuk" ? "Awal" : "Akhir"})
-              </label>
-              <select
-                required
-                value={formData.kondisi}
-                className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-indigo-500 bg-slate-50 font-bold"
-                onChange={(e) =>
-                  setFormData({ ...formData, kondisi: e.target.value })
-                }
-              >
-                <option value="">-- Pilih Kondisi --</option>
-                <option value="Bersih">✅ Bersih & Rapi</option>
-                <option value="Kotor">⚠️ Kotor & Berantakan</option>
-              </select>
-            </div>
-
-            {/* INTEGRASI WEBCAM */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">
-                Dokumentasi Foto Kamera
-              </label>
-
-              {showCamera ? (
-                <div className="relative w-full h-52 rounded-3xl overflow-hidden bg-black shadow-inner border-2 border-indigo-500">
-                  <Webcam
-                    audio={false}
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    videoConstraints={{ facingMode: "environment" }}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowCamera(false)}
-                      className="bg-red-500 text-white p-2 px-4 rounded-full text-[10px] font-black uppercase"
+                  <SelectTrigger className="rounded-none h-11 border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950 font-mono text-xs font-bold">
+                    <SelectValue placeholder="Kondisi Ruangan" />
+                  </SelectTrigger>
+                  <SelectContent className="border-2 border-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 font-mono font-black text-xs text-zinc-800 dark:text-zinc-200 rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                    <SelectItem
+                      value="Bersih"
+                      className="cursor-pointer rounded-none"
                     >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={capture}
-                      className="bg-white text-slate-900 px-6 py-2 rounded-full font-black text-[10px] uppercase shadow-lg border-b-2 border-slate-300"
+                      Kondisi Bersih & Alat Rapi
+                    </SelectItem>
+                    <SelectItem
+                      value="Kotor"
+                      className="cursor-pointer rounded-none"
                     >
-                      Jepret Foto
-                    </button>
+                      Kondisi Kotor & Berantakan
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5 text-left">
+                <Label className="font-mono font-black text-xs text-zinc-700 dark:text-zinc-300">
+                  Ambil Foto
+                </Label>
+
+                {showCamera ? (
+                  <div className="relative w-full h-44 overflow-hidden bg-black border-2 border-zinc-950 dark:border-zinc-800 shadow-inner animate-in fade-in duration-200 rounded-none">
+                    <Webcam
+                      audio={false}
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={{ facingMode: "environment" }}
+                      className="w-full h-full object-cover grayscale"
+                    />
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3 z-20">
+                      <Button
+                        type="button"
+                        variant="brutal"
+                        color="red"
+                        size="sm"
+                        onClick={() => setShowCamera(false)}
+                      >
+                        <X size={13} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="brutal"
+                        size="sm"
+                        onClick={capture}
+                      >
+                        <Camera size={13} />
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  <div
+                    onClick={() => setShowCamera(true)}
+                    className="w-full h-44 bg-zinc-50 dark:bg-zinc-950 border-2 border-dashed border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-950 dark:hover:border-zinc-400 transition-all overflow-hidden group rounded-none"
+                  >
+                    {formData.fotoPreview ? (
+                      <div className="w-full h-full relative">
+                        <img
+                          src={formData.fotoPreview}
+                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all"
+                          alt="Preview Bukti Dokumentasi"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[9px] text-white font-black tracking-widest font-mono bg-zinc-950/80 px-3 py-1 border border-zinc-700">
+                            AMBIL RE-TAKE FOTO
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 bg-white dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none mb-2 group-hover:scale-105 transition-transform">
+                          <Camera size={15} />
+                        </div>
+                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 tracking-widest font-mono text-center px-4">
+                          KLIK AREA UNTUK MENYALAKAN KAMERA
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              color="green"
+              size="lg"
+              variant="brutal"
+              className="w-full"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  <span>SEDANG MENGUNGGAH BERKAS...</span>
                 </div>
               ) : (
-                <div
-                  onClick={() => setShowCamera(true)}
-                  className="w-full h-52 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-indigo-50 transition-all overflow-hidden relative shadow-inner"
-                >
-                  {formData.fotoPreview ? (
-                    <img
-                      src={formData.fotoPreview}
-                      className="w-full h-full object-cover"
-                      alt="Preview"
-                    />
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm mb-3">
-                        <i className="bi bi-camera-fill text-2xl"></i>
-                      </div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Klik Untuk Memotret
-                      </p>
-                    </>
-                  )}
+                <div className="flex items-center justify-center gap-2">
+                  <CheckCircle2 size={14} />
+                  <span>
+                    {step === "masuk"
+                      ? "KIRIM BERKAS CHECK-IN"
+                      : "KIRIM LAPORAN CHECK-OUT"}
+                  </span>
                 </div>
               )}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-5 rounded-[2rem] font-black text-white shadow-xl transition-all active:scale-95 ${
-              step === "masuk" ? "bg-slate-900" : "bg-orange-600"
-            } ${loading ? "opacity-50 cursor-not-allowed" : "hover:shadow-indigo-200"}`}
-          >
-            {loading ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>MEMPROSES...</span>
-              </div>
-            ) : (
-              <span>
-                {step === "masuk"
-                  ? "SIMPAN DATA CHECK-IN"
-                  : "SIMPAN DATA CHECK-OUT"}
-              </span>
-            )}
-          </button>
-        </form>
+            </Button>
+          </form>
+        </Card>
       </div>
-    </div>
+    </PageLayout>
   );
 }

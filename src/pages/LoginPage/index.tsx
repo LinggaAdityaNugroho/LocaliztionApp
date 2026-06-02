@@ -1,6 +1,5 @@
 import { AuthLayout } from "../../layouts/AuthForm";
 import { FormLogin } from "../../components/organism/FormLogin";
-// import { Link } from "react-router-dom";
 
 export function LoginPage() {
   return (
@@ -11,10 +10,6 @@ export function LoginPage() {
       >
         <div className="flex flex-col gap-2">
           <FormLogin />
-
-          {/* <Link to="/register" className="text-primary hover:underline">
-            Dont have an account? <span className="font-semibold">Sign Up</span>
-          </Link> */}
         </div>
       </AuthLayout>
     </div>

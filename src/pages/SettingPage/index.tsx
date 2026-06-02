@@ -1,174 +1,249 @@
-import { MyButton } from "../../components/atoms/Button";
-import { useTheme } from "../../components/themes/themes-provider";
-import { Moon, Sun, User, Globe, Palette, Camera } from "lucide-react";
-import { Card, CardContent } from "../../components/ui/card";
-import api from "../../services/api";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { useTheme } from "../../components/themes/themes-provider";
+import {
+  Moon,
+  Sun,
+  User,
+  Globe,
+  Palette,
+  GraduationCap,
+  ShieldCheck,
+} from "lucide-react";
+
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { PageLayout } from "../../layouts/PageLayout";
 
 interface UserData {
+  id: number;
   name: string;
   email: string;
-  avatar: string;
+  nim_nip: string;
+  role: string;
+  kelas: string;
+  prodi: string;
+  jurusan: string;
+  jenjang: string;
+  avatar?: string;
 }
 
 export function SettingPage() {
   const { theme, setTheme } = useTheme();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const location = useLocation();
+
+  const checkStatus = () => {
+    const authJson = localStorage.getItem("auth");
+    if (authJson) {
+      const authData = JSON.parse(authJson);
+      setUserData(authData.user);
+    } else {
+      setUserData(null);
+    }
+  };
 
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        const res = await api.get("user");
-        setUserData(res.data);
-      } catch (error) {
-        console.log("Failed get data");
-      }
-    };
-    getUser();
-  }, []);
+    checkStatus();
+  }, [location.pathname]);
 
   return (
-    <div className="py-6 px-4 lg:py-10 lg:px-12 max-w-7xl mx-auto space-y-12">
-      {/* Header Section */}
-      <div className="border-b pb-6">
-        <h1 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white">
-          Settings
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Manage your account details, preferences, and interface themes.
-        </p>
-      </div>
+    <PageLayout
+      pageTitle="Pengaturan"
+      pageDescription="Kelola detail informasi akun, preferensi sistem, dan tema antarmuka Anda."
+    >
+      <div className="py-6 w-full space-y-10 antialiased selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900 text-left">
+        <div className="grid gap-8">
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <User className="text-zinc-900 dark:text-zinc-100" size={18} />
+              <h2 className="text-lg font-mono font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+                Detail Profil
+              </h2>
+            </div>
 
-      <div className="grid gap-10">
-        {/* Section: Profile */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2">
-            <User className="text-blue-600" size={20} />
-            <h2 className="text-xl font-bold">Profile Details</h2>
-          </div>
-
-          <Card className="border-none shadow-sm bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md">
-            <CardContent className="p-6 lg:p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 items-start">
-                <div className="lg:col-span-3 space-y-8 order-2 lg:order-1">
-                  {/* Name Section */}
-                  <div className="group flex flex-col space-y-1.5 transition-all">
-                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
-                      <User
-                        size={14}
-                        className="group-hover:text-blue-500 transition-colors"
+            <Card className="border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+              <CardContent className="p-6 lg:p-8">
+                <div className="flex flex-col md:flex-row gap-10 items-center md:items-start">
+                  <div className="flex flex-col gap-3 items-center shrink-0">
+                    <div className="relative group cursor-pointer">
+                      <img
+                        src={
+                          userData?.avatar ||
+                          `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || "User"}&backgroundColor=18181b`
+                        }
+                        alt="Profile"
+                        className="relative w-28 h-28 lg:w-32 lg:h-32 rounded-none object-cover  transition-transform duration-300"
                       />
-                      <span className="text-xs font-bold uppercase tracking-widest">
-                        Full Name
-                      </span>
                     </div>
-                    <p className="text-xl font-black text-slate-800 dark:text-slate-100 sm:text-2xl tracking-tight">
-                      {userData?.name || "Anonymous User"}
-                    </p>
-                    <div className="h-0.5 w-12 bg-blue-500/30 rounded-full group-hover:w-24 transition-all duration-500" />
                   </div>
 
-                  {/* Email Section */}
-                  <div className="group flex flex-col space-y-1.5 transition-all">
-                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
-                      <Globe
-                        size={14}
-                        className="group-hover:text-purple-500 transition-colors"
-                      />
-                      <span className="text-xs font-bold uppercase tracking-widest">
-                        Email Address
-                      </span>
+                  <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-1 sm:col-span-2">
+                      <div className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
+                        <User size={13} />
+                        <span className="text-sm font-mono font-black tracking-widest">
+                          Nama Lengkap
+                        </span>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <p className="text-xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+                          {userData?.name || "Memuat..."}
+                        </p>
+                        {userData?.role && (
+                          <div className="self-start md:self-center flex items-center gap-1.5 px-4 py-1.5 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100  text-xs font-mono font-black tracking-widest">
+                            <ShieldCheck size={14} />
+                            {userData.role.toUpperCase()}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">
-                      {userData?.email || "email@example.com"}
-                    </p>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
+                        <Globe size={13} />
+                        <span className="text-sm font-mono font-black tracking-widest">
+                          Alamat Email
+                        </span>
+                      </div>
+                      <p className="text-sm font-mono font-bold text-zinc-700 dark:text-zinc-300 break-all">
+                        {userData?.email || "memuat@mhs.polines.ac.id"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
+                        <span className="text-sm font-mono font-black tracking-widest">
+                          Nomor Induk Mahasiswa (NIM)
+                        </span>
+                      </div>
+                      <p className="text-sm font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                        {userData?.nim_nip || "-"}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </section>
 
-                {/* Avatar Upload */}
-                <div className="flex flex-col gap-4 items-center order-1 lg:order-2">
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
-                    <img
-                      src={userData?.avatar || "/public/img/profile.png"}
-                      alt="Profile"
-                      className="relative w-28 h-28 lg:w-32 lg:h-32 rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-xl"
-                    />
-                    <button className="absolute bottom-1 right-1 bg-blue-600 text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform">
-                      <Camera size={16} />
-                    </button>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-slate-400 font-medium">
-                      JPG, GIF or PNG. Max 2MB
-                    </p>
-                  </div>
-                </div>
+          {userData?.role === "mahasiswa" && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <GraduationCap
+                  className="text-zinc-900 dark:text-zinc-100"
+                  size={18}
+                />
+                <h2 className="text-lg font-mono font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+                  Informasi Akademik
+                </h2>
               </div>
-            </CardContent>
-          </Card>
-        </section>
+              <Card className="border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="space-y-1 border-b sm:border-b-0 pb-4 sm:pb-0 border-zinc-200 dark:border-zinc-800">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono font-black tracking-widest">
+                      Kelas
+                    </span>
+                    <p className="text-base font-mono font-black text-zinc-900 dark:text-zinc-200">
+                      {userData.kelas || "-"}
+                    </p>
+                  </div>
+                  <div className="space-y-1 border-b sm:border-b-0 pb-4 sm:pb-0 border-zinc-200 dark:border-zinc-800">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono font-black tracking-widest">
+                      Program Studi
+                    </span>
+                    <p className="text-base font-mono font-black text-zinc-900 dark:text-zinc-200">
+                      {userData.prodi || "-"}
+                    </p>
+                  </div>
+                  <div className="space-y-1 border-b sm:border-b-0 pb-4 sm:pb-0 border-zinc-200 dark:border-zinc-800">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono font-black tracking-widest">
+                      Jurusan
+                    </span>
+                    <p className="text-base font-mono font-black text-zinc-900 dark:text-zinc-200">
+                      {userData.jurusan || "-"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono font-black tracking-widest">
+                      Jenjang
+                    </span>
+                    <p className="text-base font-mono font-black text-zinc-900 dark:text-zinc-200">
+                      {userData.jenjang || "-"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+          )}
 
-        {/* Section: Preferences */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Theme Card */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Palette className="text-purple-600" size={20} />
-              <h2 className="text-lg font-bold">Appearance</h2>
-            </div>
-            <Card className="hover:border-purple-200 transition-colors">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200">
-                    Interface Theme
-                  </p>
-                  <p className="text-sm text-slate-400">
-                    Switch between light and dark mode
-                  </p>
-                </div>
-                <MyButton
-                  variant="outline"
-                  size="icon"
-                  className="rounded-xl h-12 w-12 border-2"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                >
-                  {theme === "dark" ? (
-                    <Sun className="text-yellow-500" />
-                  ) : (
-                    <Moon className="text-blue-600" />
-                  )}
-                </MyButton>
-              </CardContent>
-            </Card>
-          </section>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Palette
+                  className="text-zinc-900 dark:text-zinc-100"
+                  size={18}
+                />
+                <h2 className="text-base font-mono font-black text-zinc-900 dark:text-zinc-100">
+                  Tampilan Sistem
+                </h2>
+              </div>
+              <Card className="border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                <CardContent className="p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-sans font-black text-sm text-zinc-900 dark:text-zinc-200">
+                      Tema Antarmuka
+                    </p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      Ganti mode terang atau mode gelap sistem.
+                    </p>
+                  </div>
+                  <Button
+                    variant="brutal"
+                    size="icon"
+                    className="rounded-none h-10 w-10 shrink-0 bg-white dark:bg-zinc-900 shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none"
+                    onClick={() =>
+                      setTheme(theme === "dark" ? "light" : "dark")
+                    }
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="text-amber-500" size={18} />
+                    ) : (
+                      <Moon className="text-zinc-900" size={18} />
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </section>
 
-          {/* Language Card */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Globe className="text-emerald-600" size={20} />
-              <h2 className="text-lg font-bold">Region</h2>
-            </div>
-            <Card className="hover:border-emerald-200 transition-colors">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200">
-                    Language
-                  </p>
-                  <p className="text-sm text-slate-400">
-                    Set your preferred language
-                  </p>
-                </div>
-                <select className="bg-transparent font-medium text-sm border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none">
-                  <option>English (US)</option>
-                  <option>Bahasa Indonesia</option>
-                  <option>Japanese</option>
-                </select>
-              </CardContent>
-            </Card>
-          </section>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Globe className="text-zinc-900 dark:text-zinc-100" size={18} />
+                <h2 className="text-base font-mono font-black text-zinc-900 dark:text-zinc-100">
+                  Regional
+                </h2>
+              </div>
+              <Card className="border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                <CardContent className="p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-sans font-black text-sm text-zinc-900 dark:text-zinc-200">
+                      Bahasa Utama
+                    </p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      Pilih bahasa operasional aplikasi.
+                    </p>
+                  </div>
+                  <select className="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono font-black text-xs border-2 border-zinc-950 dark:border-zinc-800 rounded-none px-3 py-2 outline-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none cursor-pointer min-w-[140px] h-10 uppercase tracking-wide">
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="en">English (US)</option>
+                    <option value="jp">Japanese</option>
+                  </select>
+                </CardContent>
+              </Card>
+            </section>
+          </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

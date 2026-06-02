@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,30 +7,16 @@ import {
   getSortedRowModel,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
-import {
-  Archive,
-  CheckCircle2,
-  Stars,
-  AlertTriangle,
-  RefreshCw,
-  X,
-} from "lucide-react";
 
 import api from "../../../services/api";
 import { getColumns } from "./columns";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
+import { LoanFilterCard } from "../../../components/molecules/LoanFilterCard";
+import { StatsSummaryGrid } from "../../../components/organism/StatsSummaryGrid";
+import { Lightbox } from "../../../components/atoms/LightBox";
 
-import { StatCard } from "../../../components/molecules/StatCard";
-import { DevicePagination } from "../../../components/molecules/DevicePagination";
 import { RiwayatPeminjamanAlatTable } from "../../../components/organism/Table/RiwayatPeminjamanAlatTable";
+import { PageLayout } from "../../../layouts/PageLayout";
+import { LoanPagination } from "../../../components/organism/LoanPagination";
 
 export function RiwayatPenggunaanRuangPage() {
   const [data, setData] = useState<any[]>([]);
@@ -38,6 +24,12 @@ export function RiwayatPenggunaanRuangPage() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
+
+  // Form State untuk Filter Waktu Sesi Lab
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndingDate] = useState<string>("");
 
   const fetchRiwayat = async () => {
     try {
@@ -45,7 +37,7 @@ export function RiwayatPenggunaanRuangPage() {
       const response = await api.get("mahasiswa/riwayat-ruang");
       setData(response.data.data || []);
     } catch (error) {
-      console.error(error);
+      console.error("Gagal sinkronisasi data riwayat ruang:", error);
     } finally {
       setLoading(false);
     }
@@ -56,20 +48,72 @@ export function RiwayatPenggunaanRuangPage() {
   }, []);
 
   const columns = useMemo(() => getColumns(setSelectedImg), []);
-  const stats = useMemo(
-    () => ({
-      total: data.length,
-      returned: data.filter((i) => i.status === "returned").length,
-      baik: data.filter((i) => i.kondisi_kembali === "baik").length,
-      rusak: data.filter((i) => i.kondisi_kembali === "rusak").length,
-    }),
-    [data],
-  );
+
+  // 👑 FILTER LOGIC: Menyaring data respons lokal berdasarkan format penanggalan
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      if (!item.waktu_masuk) return true;
+
+      // Parsing format response "25 May 2026, 17:44" -> ambil bagian tanggal saja
+      // "25 May 2026" diubah menjadi objek Date untuk dievaluasi rentangnya
+      const cleanDateStr = item.waktu_masuk.split(",")[0].trim();
+      const itemDate = new Date(cleanDateStr);
+
+      if (isNaN(itemDate.getTime())) return true;
+
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (itemDate < start) return false;
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (itemDate > end) return false;
+      }
+
+      return true;
+    });
+  }, [data, startDate, endDate]);
+
+  const stats = useMemo(() => {
+    return {
+      total: filteredData.length,
+      returned: filteredData.filter((i) => {
+        const status = i.status?.toLowerCase().trim();
+        return (
+          status === "returned" ||
+          status === "selesai" ||
+          status === "dikembalikan"
+        );
+      }).length,
+      baik: filteredData.filter((i) => {
+        const kondisi = i.kondisi_keluar?.toLowerCase().trim();
+        return kondisi === "baik" || kondisi === "bersih" || kondisi === "good";
+      }).length,
+      rusak: filteredData.filter((i) => {
+        const kondisi = i.kondisi_keluar?.toLowerCase().trim();
+        return (
+          kondisi === "rusak" || kondisi === "broken" || kondisi === "kotor"
+        );
+      }).length,
+    };
+  }, [filteredData]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
 
   const table = useReactTable({
-    data,
+    data: filteredData, // Gunakan data hasil filter penanggalan
     columns,
-    state: { globalFilter, sorting },
+    state: {
+      globalFilter,
+      sorting,
+      pagination: {
+        pageIndex: currentPage - 1,
+        pageSize: itemsPerPage,
+      },
+    },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -79,106 +123,53 @@ export function RiwayatPenggunaanRuangPage() {
     initialState: { pagination: { pageSize: 5 } },
   });
 
+  const handleClearFilters = () => {
+    setStartDate("");
+    setEndingDate("");
+    setCurrentPage(1);
+  };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
-      {/* Organism: Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Riwayat"
-          value={stats.total}
-          icon={<Archive size={20} />}
-          color="text-blue-600"
+    <PageLayout
+      pageTitle="Riwayat Penggunaan Ruang"
+      pageDescription="Daftar rekam jejak penggunaan ruang lab praktikum, status inventarisasi log, serta lampiran verifikasi kondisi fisik."
+    >
+      <div className="py-6 w-full space-y-6 antialiased text-left bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
+        <StatsSummaryGrid stats={stats} />
+
+        {/* 👑 INTEGRASI FILTER: Panel filter waktu berbasis Atomic DatePicker */}
+        <LoanFilterCard
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={(val) => {
+            setStartDate(val);
+            setCurrentPage(1);
+          }}
+          onEndDateChange={(val) => {
+            setEndingDate(val);
+            setCurrentPage(1);
+          }}
+          onClear={handleClearFilters}
         />
-        <StatCard
-          title="Berhasil Kembali"
-          value={stats.returned}
-          icon={<CheckCircle2 size={20} />}
-          color="text-emerald-600"
-        />
-        <StatCard
-          title="Kondisi Baik"
-          value={stats.baik}
-          icon={<Stars size={20} />}
-          color="text-green-600"
-        />
-        <StatCard
-          title="Perlu Perbaikan"
-          value={stats.rusak}
-          icon={<AlertTriangle size={20} />}
-          color="text-red-600"
-        />
-      </div>
 
-      {/* Toolbar: Search & Page Size */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Input
-            placeholder="Cari data peminjaman..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="max-w-xs rounded-xl border-slate-200 focus:ring-indigo-500"
-          />
-          <Button
-            variant="ghost"
-            onClick={fetchRiwayat}
-            className="rounded-xl hover:bg-slate-100 text-slate-500"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">
-            Baris per halaman
-          </span>
-          <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(v) => table.setPageSize(Number(v))}
-          >
-            <SelectTrigger className="w-20 rounded-xl border-slate-200 font-bold text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[5, 10, 25, 50].map((size) => (
-                <SelectItem key={size} value={`${size}`}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Organism: Table */}
-      <RiwayatPeminjamanAlatTable
-        table={table}
-        loading={loading}
-        columnsCount={columns.length}
-      />
-
-      {/* Molecule: Pagination */}
-      <DevicePagination table={table} />
-
-      {/* Atom/Molecule: Image Lightbox */}
-      {selectedImg && (
-        <div
-          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-300"
-          onClick={() => setSelectedImg(null)}
-        >
-          <Button
-            variant="ghost"
-            className="absolute top-8 right-8 text-white hover:bg-white/10 rounded-full h-12 w-12"
-            onClick={() => setSelectedImg(null)}
-          >
-            <X size={32} />
-          </Button>
-          <img
-            src={selectedImg}
-            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10"
-            alt="Detail Dokumentasi"
+        <div className="overflow-hidden w-full">
+          <RiwayatPeminjamanAlatTable
+            table={table}
+            loading={loading}
+            columnsCount={columns.length}
           />
         </div>
-      )}
-    </div>
+
+        <div className="w-full flex justify-center pt-2">
+          <LoanPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+
+        <Lightbox src={selectedImg} onClose={() => setSelectedImg(null)} />
+      </div>
+    </PageLayout>
   );
 }

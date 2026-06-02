@@ -19,9 +19,9 @@ export const InventoryTable = ({
   loading: boolean;
   columnsCount: number;
 }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+  <div className="w-full  border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden transition-colors duration-300">
     <Table>
-      <TableHeader className="bg-slate-900">
+      <TableHeader className="bg-zinc-950 dark:bg-zinc-950 border-b-2 border-zinc-950">
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow
             key={headerGroup.id}
@@ -30,7 +30,7 @@ export const InventoryTable = ({
             {headerGroup.headers.map((header) => (
               <TableHead
                 key={header.id}
-                className="text-white font-bold text-[10px] uppercase h-12"
+                className="text-white font-mono font-black text-[10px]  tracking-widest h-12 text-left px-4"
               >
                 {flexRender(
                   header.column.columnDef.header,
@@ -41,12 +41,16 @@ export const InventoryTable = ({
           </TableRow>
         ))}
       </TableHeader>
+
       <TableBody>
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <TableRow key={i}>
+            <TableRow
+              key={i}
+              className="border-b border-zinc-100 dark:border-zinc-800/60 last:border-0"
+            >
               <TableCell colSpan={columnsCount} className="p-4">
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full  bg-zinc-100 dark:bg-zinc-800" />
               </TableCell>
             </TableRow>
           ))
@@ -54,12 +58,12 @@ export const InventoryTable = ({
           table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+              className="hover:bg-zinc-50 dark:hover:bg-zinc-950/40 transition-colors border-b-2 border-zinc-100 dark:border-zinc-800/60 last:border-0"
             >
               {row.getVisibleCells().map((cell) => (
                 <TableCell
                   key={cell.id}
-                  className="py-4 px-4 font-medium text-slate-700"
+                  className="py-4 px-4 font-sans font-bold text-xs text-zinc-800 dark:text-zinc-200"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
@@ -70,9 +74,9 @@ export const InventoryTable = ({
           <TableRow>
             <TableCell
               colSpan={columnsCount}
-              className="h-32 text-center text-slate-400 font-bold uppercase text-xs"
+              className="h-32 text-center text-zinc-400 dark:text-zinc-600 font-mono font-black  text-xs tracking-widest bg-zinc-50/50 dark:bg-zinc-950/20"
             >
-              Data Kosong
+              Data Kosong / No Records
             </TableCell>
           </TableRow>
         )}

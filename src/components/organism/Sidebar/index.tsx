@@ -1,31 +1,9 @@
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenuButton,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarFooter,
-} from "../../ui/sidebar";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../../ui/dropdown-menu.tsx";
-
-import { useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   IconMap,
   IconHome,
   IconDeviceAirtag,
-  IconUser,
   IconHistory,
   IconChevronUp,
   IconSchool,
@@ -39,15 +17,34 @@ import {
   IconCalendarTime,
   IconTool,
 } from "@tabler/icons-react";
-import api from "../../../services/api.ts";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenuButton,
+  SidebarMenu,
+  SidebarMenuItem,
+} from "../../ui/sidebar";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu.tsx";
 
 interface UserData {
   id: number;
   email: string;
-  email_polines: string;
   avatar?: string;
-  nama?: string;
-  role?: string; // Tambahkan role untuk filter menu
+  kelas: string;
+  name?: string;
+  role?: string;
 }
 
 const items = [
@@ -56,7 +53,7 @@ const items = [
     title: "Device Management",
     url: "/device-management",
     icon: IconDeviceAirtag,
-    roles: ["admin"],
+    roles: ["tendik"],
   },
   { title: "Map", url: "/map", icon: IconMap },
   { title: "History", url: "/history", icon: IconHistory },
@@ -70,94 +67,88 @@ const items = [
     title: "Ketersediaan Alat",
     url: "/ketersediaan-alat",
     icon: IconBoxSeam,
-    roles: ["admin", "staff"],
+    roles: ["tendik"],
   },
   {
     title: "Persetujuan Pinjam",
     url: "/persetujuan-pinjam",
     icon: IconFileCheck,
-    roles: ["admin", "staff"],
+    roles: ["tendik"],
   },
   {
     title: "Riwayat Peminjaman Ruang",
     url: "/riwayat-peminjaman-ruang",
     icon: IconDoorEnter,
-    roles: ["admin", "staff"],
+    roles: ["tendik", "dosen"],
   },
   {
     title: "Riwayat Peminjaman Alat",
-    url: "staff/riwayat-peminjaman-alat",
+    url: "/staff/riwayat-peminjaman-alat",
     icon: IconTool,
-    roles: ["admin", "staff"],
+    roles: ["tendik", "dosen"],
   },
   {
     title: "Laporan Kerusakan",
     url: "/laporan-kerusakan",
     icon: IconAlertTriangle,
-    roles: ["admin", "staff"],
+    roles: ["tendik"],
   },
   {
     title: "Peminjaman Aktif",
     url: "/peminjaman-aktif",
     icon: IconClock,
-    roles: ["admin", "mahasiswa"],
+    roles: ["mahasiswa"],
   },
   {
     title: "Pengembalian Alat",
     url: "/pengembalian-alat",
     icon: IconArrowBackUp,
-    roles: ["admin", "mahasiswa"],
+    roles: ["mahasiswa"],
   },
   {
     title: "Penggunaan Ruang Lab",
     url: "/penggunaan-ruang-lab",
     icon: IconDoorEnter,
-    roles: ["admin", "mahasiswa"],
+    roles: ["mahasiswa"],
   },
   {
     title: "Riwayat Penggunaan Ruang",
     url: "/riwayat-penggunaan-ruang",
     icon: IconCalendarTime,
-    roles: ["admin", "mahasiswa"],
+    roles: ["mahasiswa", "dosen"],
   },
   {
     title: "Pengajuan Pinjam Alat",
     url: "/pengajuan-pinjam-alat",
     icon: IconFilePlus,
-    roles: ["admin", "mahasiswa"],
+    roles: ["mahasiswa"],
   },
 ];
 
 export function MySidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [userData, setUserData] = useState<UserData | null>(null);
 
-  // Ambil user awal dari localStorage
-  const [userData, setUserData] = useState<UserData | null>(() => {
-    const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const checkStatus = () => {
+    const authJson = localStorage.getItem("auth");
+    if (authJson) {
+      const authData = JSON.parse(authJson);
+      setUserData(authData.user);
+    } else {
+      setUserData(null);
+    }
+  };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get("mahasiswa");
-        const freshData = res.data.data.user;
-        setUserData(freshData);
-        localStorage.setItem("user", JSON.stringify(freshData));
-      } catch (error) {
-        console.error("Failed to fetch fresh profile data", error);
-      }
-    };
-    fetchProfile();
-  }, []);
+    checkStatus();
+  }, [location.pathname]);
 
-  // Filter items berdasarkan role user (asumsi role ada di userData)
   const filteredItems = items.filter((item) => {
-    if (!item.roles) return true; // Jika tidak ada batasan role, tampilkan
+    if (!item.roles) return true;
     return item.roles.includes(userData?.role?.toLowerCase() || "");
   });
 
-  // Pisahkan menu
   const mainItems = filteredItems.filter((i) =>
     ["Home", "Map", "History", "Class"].includes(i.title),
   );
@@ -171,110 +162,137 @@ export function MySidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-slate-200">
-      <SidebarHeader className="py-4">
+    <Sidebar
+      collapsible="icon"
+      className="border-r-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950"
+    >
+      <div className="py-4 px-2 border-b-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               onClick={() => navigate("/dashboard")}
-              className="hover:bg-blue-50 transition-colors"
+              className="hover:bg-zinc-100 dark:hover:bg-zinc-900 border-2 border-transparent hover:border-zinc-950 rounded-none transition-all"
             >
-              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-200">
-                <IconDeviceAirtag size={22} />
+              <div className="flex aspect-square size-6 items-center justify-center rounded-none bg-zinc-950 dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-700 text-white ">
+                <IconDeviceAirtag size={20} />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight ml-2">
-                <span className="truncate font-bold text-slate-800">
+              <div className="grid flex-1 text-left text-sm leading-tight ml-2 font-mono">
+                <span className="truncate font-black text-zinc-900 dark:text-zinc-50">
                   Localization App
                 </span>
-                <span className="truncate text-[10px] font-medium text-slate-400">
-                  Management System
+                <span className="truncate text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                  Sistem Manajemen
                 </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarHeader>
+      </div>
 
-      <SidebarContent className="px-2">
-        {/* Menu Utama */}
+      <SidebarContent className="px-2 bg-white dark:bg-zinc-950 pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <SidebarGroupLabel className=" text-sm font-mono font-black tracking-widest text-zinc-900 dark:text-zinc-500">
             Menu Utama
           </SidebarGroupLabel>
           <SidebarMenu>
-            {mainItems.map((item) => (
-              <SidebarMenuItem key={item.url}>
-                <SidebarMenuButton
-                  asChild
-                  tooltip={item.title}
-                  className="hover:bg-slate-100 rounded-lg"
-                >
-                  <Link to={item.url} className="flex items-center py-2 px-3">
-                    <item.icon size={20} className="text-slate-500" />
-                    <span className="ml-3 font-medium text-slate-700">
-                      {item.title}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-
-        {/* Manajemen Section */}
-        {adminItems.length > 0 && (
-          <SidebarGroup className="mt-4">
-            <SidebarGroupLabel className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Manajemen & Log
-            </SidebarGroupLabel>
-            <SidebarMenu>
-              {adminItems.map((item) => (
+            {mainItems.map((item) => {
+              const isActive = location.pathname === item.url;
+              return (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild
+                    isActive={isActive}
                     tooltip={item.title}
-                    className="hover:bg-indigo-50 group rounded-lg"
+                    className={`border-2 rounded-none transition-all font-mono text-xs font-black ${
+                      isActive
+                        ? "bg-blue-500! data-[active=true]:bg-blue-600 data-[active=true]:text-white text-white dark:text-white border-zinc-950 dark:border-zinc-700 shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none hover:bg-blue-500! hover:text-white"
+                        : "border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:border-zinc-950 dark:hover:border-zinc-800 text-zinc-800 dark:text-zinc-200"
+                    }`}
                   >
-                    <Link to={item.url} className="flex items-center py-2 px-3">
-                      <item.icon size={20} className="text-slate-500" />
-                      <span className="ml-3 font-medium text-slate-600">
-                        {item.title}
-                      </span>
+                    <Link
+                      to={item.url}
+                      className="flex items-center py-2 px-3 w-full h-full"
+                    >
+                      <item.icon size={18} className="shrink-0 text-current" />
+                      <span className="ml-3 text-current">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        {adminItems.length > 0 && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className=" text-sm font-mono font-black tracking-widest text-zinc-900 dark:text-zinc-500">
+              Manajemen Alat
+            </SidebarGroupLabel>
+
+            <SidebarMenu>
+              {adminItems.map((item) => {
+                const isActive = location.pathname === item.url;
+
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                      className={`border-2 rounded-none transition-all font-mono text-xs font-black ${
+                        isActive
+                          ? "bg-blue-500! data-[active=true]:bg-blue-600 data-[active=true]:text-white text-white dark:text-white border-zinc-950 dark:border-zinc-700 shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none hover:bg-blue-500! hover:text-white"
+                          : "border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:border-zinc-950 dark:hover:border-zinc-800 text-zinc-800 dark:text-zinc-200"
+                      }`}
+                    >
+                      <Link
+                        to={item.url}
+                        className="flex items-center py-2 px-3 w-full h-full"
+                      >
+                        <item.icon
+                          size={18}
+                          className="shrink-0 text-current"
+                        />
+                        <span className="ml-3 text-current">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-2 border-t border-slate-100 bg-slate-50/50">
+      <div className="p-2 border-t-2 border-zinc-950 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="w-full hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all shadow-sm active:scale-95 px-2"
+                  className="w-full bg-white dark:bg-zinc-950 border-2 border-zinc-950 dark:border-zinc-800 rounded-none transition-all shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none px-2"
                 >
                   <div className="relative flex shrink-0">
                     <img
-                      src={userData?.avatar || "/img/profile.png"}
+                      src={
+                        userData?.avatar ||
+                        `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || "User"}&backgroundColor=18181b`
+                      }
                       alt="Profile"
-                      className="h-8 w-8 rounded-full object-cover ring-2 ring-white shadow-sm"
+                      className="relative w-8 h-8 rounded-none object-cover border-2 border-zinc-950 dark:border-zinc-800 shadow-none shrink-0"
                     />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight ml-3 group-data-[collapsible=icon]:hidden transition-all">
-                    <span className="truncate font-bold text-slate-800">
-                      {userData?.nama || "User"}
+                  <div className="grid flex-1 text-left text-sm leading-tight ml-3 group-data-[collapsible=icon]:hidden font-mono">
+                    <span className="truncate font-black text-zinc-900 dark:text-zinc-100">
+                      {userData?.name || "User"}
                     </span>
-                    <span className="truncate text-[10px] font-medium text-slate-400 tracking-tighter">
-                      {userData?.email_polines || "No Email"}
+                    <span className="truncate text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                      {userData?.kelas}
                     </span>
                   </div>
-                  <IconChevronUp className="ml-auto size-4 text-slate-400 group-data-[collapsible=icon]:hidden" />
+                  <IconChevronUp className="ml-auto size-4 text-zinc-400 group-data-[collapsible=icon]:hidden shrink-0" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
 
@@ -282,40 +300,37 @@ export function MySidebar() {
                 side="right"
                 align="end"
                 sideOffset={12}
-                className="w-64 mb-2 rounded-2xl p-2 shadow-2xl border-slate-200"
+                className="w-64 mb-2 p-2 border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950 font-mono text-xs rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none"
               >
-                <DropdownMenuLabel className="font-normal px-4 py-3">
+                <DropdownMenuLabel className="font-normal px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-bold text-slate-800">
-                      {userData?.email_polines}
+                    <p className="text-sm font-black text-zinc-900 dark:text-zinc-100">
+                      {userData?.name}
                     </p>
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold">
                       {userData?.role}
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-zinc-200 dark:bg-zinc-800" />
                 <DropdownMenuItem
                   onClick={() => navigate("/settings")}
-                  className="rounded-lg cursor-pointer py-2 px-4 hover:bg-slate-50"
+                  className="cursor-pointer py-2 px-4 rounded-none focus:bg-zinc-100 dark:focus:bg-zinc-900 font-black text-zinc-800 dark:text-zinc-200"
                 >
-                  <IconUser className="mr-3 h-4 w-4 text-slate-500" />
-                  <span className="font-medium">Settings</span>
+                  <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-zinc-200 dark:bg-zinc-800" />
                 <DropdownMenuItem
                   onClick={logOut}
-                  className="rounded-lg cursor-pointer py-2 px-4 text-red-600 focus:bg-red-50 focus:text-red-700"
+                  className="cursor-pointer py-2 px-4 rounded-none text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/40 font-black tracking-widest"
                 >
-                  <span className="font-bold text-sm tracking-widest">
-                    LOGOUT
-                  </span>
+                  <span>LOGOUT</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter>
+      </div>
     </Sidebar>
   );
 }

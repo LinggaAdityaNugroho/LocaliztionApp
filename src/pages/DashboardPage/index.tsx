@@ -1,103 +1,82 @@
+import { useEffect, useState, useCallback } from "react";
 import { DashboardCard } from "../../components/organism/Dashboard";
-import { MyChart } from "../../components/organism/chart";
 import { MapLab } from "../../components/organism/Map/Map";
-
-// logo loop reactbits
-import LogoLoop from "../../components/LogoLoop";
-
-// Component
-import { CardReview } from "./CardReview";
-// import { Button } from "../../components/ui/button";
-import { ModalReview } from "./ModalReview";
-import { useTheme } from "../../components/themes/themes-provider";
-import { useEffect, useState } from "react";
-import { getProfile } from "../../services/user.service";
-// techLogos
-const techLogos = [
-  {
-    node: <CardReview />,
-  },
-];
-
-interface UserProfile {
-  id: number;
-  email: string;
-  email_polines: string;
-}
+import { RefreshCw, Monitor, AlertCircle } from "lucide-react";
+import api from "../../services/api";
+import { PageLayout } from "../../layouts/PageLayout";
+import { Button } from "../../components/ui/button";
 
 export function Dashboard() {
-  const { theme } = useTheme();
-  const savedUser = localStorage.getItem("user");
-  const user: UserProfile | null = savedUser ? JSON.parse(savedUser) : null;
-  const [loading, setLoading] = useState(true);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [focusTarget, setFocusTarget] = useState<[number, number] | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const data = await getProfile();
-        // Set state ke data.user (sesuai struktur JSON kamu)
-
-        console.log("USER" + data.user);
-      } catch (err) {
-        console.error("Gagal load profil");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
+  const fetchDashboardDevices = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await api.get("/devices");
+      setDevices(response.data.data || response.data || []);
+    } catch (err) {
+      console.error("Gagal memuat map data di dashboard:", err);
+      setError("Gagal menyinkronkan data koordinat node BLE.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  if (loading) return <p>Loading...</p>;
+  useEffect(() => {
+    fetchDashboardDevices();
+  }, [fetchDashboardDevices]);
 
   return (
-    <main className="w-full">
-      <div className="flex flex-col flex-1 gap-4 p-4 lg:p-8">
-        <div className="grid md:grid-cols-3 gap-4">
-          <DashboardCard />
-          <DashboardCard />
+    <PageLayout
+      pageTitle="Sistem Pemantauan Alat"
+      pageDescription="Pelacakan posisi aset inventaris laboratorium secara real-time berbasis RSSI."
+    >
+      <div className="py-6 w-full space-y-8 antialiased selection:bg-zinc-900 dark:selection:bg-white selection:text-white dark:selection:text-zinc-950 text-left transition-colors duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
           <DashboardCard />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <MyChart />
-          <MapLab />
-        </div>
-        {/* logo loop */}
-        <div className="flex flex-col justify-center items-center text-center space-y-4 py-10">
-          <div className="space-y-2">
-            <h2 className="text-4xl font-extrabold tracking-tight lg:text-5xl bg-gradient-to-r from-blue-600 to-indigo-400 bg-clip-text text-transparent">
-              What They Say
+
+        <div className="flex flex-col space-y-3 w-full">
+          <div className="flex items-center gap-2 px-1">
+            <Monitor size={14} className="text-zinc-400" />
+            <h2 className="text-[10px] font-mono font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest">
+              Denah Node Aktif Lokalisasi
             </h2>
-            <div className="h-1.5 w-20 bg-blue-600 mx-auto rounded-full"></div>
           </div>
 
-          <p className="max-w-[600px] text-muted-foreground text-lg md:text-xl font-medium leading-relaxed">
-            Hi! This is our{" "}
-            <span className="text-blue-600 font-bold italic">
-              final project
-            </span>
-            . We&apos;d love to hear your thoughts—feel free to drop a review
-            below!
-          </p>
+          <div className="relative border-2 border-zinc-950 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none h-[400px] sm:h-[500px] lg:h-[580px] transition-all rounded-none">
+            {error && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-zinc-50/90 dark:bg-zinc-900/90 backdrop-blur-xs text-center space-y-4 animate-in fade-in duration-300">
+                <div className="w-12 h-12 bg-white dark:bg-zinc-950 border-2 border-zinc-950 dark:border-zinc-800 flex items-center justify-center text-red-500 rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                  <AlertCircle size={20} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-mono font-black uppercase text-zinc-800 dark:text-zinc-200 tracking-tight">
+                    Koneksi Gateway Gagal
+                  </h4>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 max-w-xs">
+                    {error}
+                  </p>
+                </div>
+                <Button
+                  onClick={fetchDashboardDevices}
+                  variant="brutal"
+                  size="sm"
+                  className="rounded-none font-mono font-black text-xs uppercase tracking-wider px-4"
+                >
+                  Coba Lagi
+                </Button>
+              </div>
+            )}
 
-          <div className="pt-4 transition-transform hover:scale-105 active:scale-95">
-            <ModalReview />
+            <MapLab devices={devices} focusTarget={focusTarget} />
           </div>
-        </div>
-        <div className="flex flex-col gap-10">
-          <LogoLoop
-            logos={techLogos}
-            speed={100}
-            direction="left"
-            logoHeight={60}
-            hoverSpeed={0}
-            gap={32}
-            fadeOut
-            fadeOutColor={theme === "dark" ? "#020617" : "#ffffff"}
-            ariaLabel="Technology partners"
-          />
         </div>
       </div>
-    </main>
+    </PageLayout>
   );
 }

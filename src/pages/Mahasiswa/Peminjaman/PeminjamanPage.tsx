@@ -1,6 +1,30 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import DetailPeminjamanModal from "./DetailPeminjamanModal";
+import { LoanStatsGrid } from "../../../components/organism/LoanStatGrid";
+import { LoanCard } from "../../../components/molecules/LoanCard";
+import { LoanFilterCard } from "../../../components/molecules/LoanFilterCard";
+import { LoanStatusTabs } from "../../../components/organism/LoanStatusTabs";
+import { LoanPagination } from "../../../components/organism/LoanPagination";
+import { PageLayout } from "../../../layouts/PageLayout";
 import api from "../../../services/api";
+import { Loader2, ClipboardX } from "lucide-react";
+import Swal from "sweetalert2";
+
+type StatusTab =
+  | "ALL"
+  | "PENDING"
+  | "APPROVED"
+  | "ONGOING"
+  | "SELESAI"
+  | "DITOLAK";
+const TABS_LIST: StatusTab[] = [
+  "ALL",
+  "PENDING",
+  "APPROVED",
+  "ONGOING",
+  "SELESAI",
+  "DITOLAK",
+];
 
 export default function PeminjamanPage() {
   const [list, setList] = useState<any[]>([]);
@@ -10,17 +34,34 @@ export default function PeminjamanPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedData, setSelectedData] = useState<any>(null);
 
+  const [activeTab, setActiveTab] = useState<StatusTab>("ALL");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 4;
+
   const fetchMyLoans = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get("/mahasiswa/riwayat-saya");
-
       const responseData = Array.isArray(res.data)
         ? res.data
         : res.data.data || [];
 
-      const activeLoans = responseData.filter((item: any) =>
-        ["pending", "approved", "ongoing"].includes(item.status),
+      const normalizedLoans = responseData.map((item: any) => {
+        let mappedStatus = item.status;
+        if (item.status === "menunggu" || item.status === "dipesan")
+          mappedStatus = "pending";
+        if (item.status === "disetujui") mappedStatus = "approved";
+        if (item.status === "berlangsung") mappedStatus = "ongoing";
+
+        return { ...item, status: mappedStatus };
+      });
+
+      const activeLoans = normalizedLoans.filter((item: any) =>
+        ["pending", "approved", "ongoing", "selesai", "ditolak"].includes(
+          item.status,
+        ),
       );
 
       setList(activeLoans);
@@ -51,14 +92,20 @@ export default function PeminjamanPage() {
       await api.post(`/peminjaman/${id}/upload-before`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("✅ Foto berhasil diunggah! Status sekarang: Ongoing.");
+
+      Swal.fire({
+        title: "Unggah Sukses",
+        text: "Foto alat berhasil disimpan! Status peminjaman Anda sekarang Berlangsung (Ongoing).",
+        icon: "success",
+        confirmButtonColor: "#18181b",
+      });
+
       fetchMyLoans();
     } catch (err: any) {
-      alert(
-        "❌ " +
-          (err.response?.data?.message ||
-            "Gagal mengunggah foto. Pastikan ukuran file max 2MB."),
-      );
+      const msg =
+        err.response?.data?.message ||
+        "Gagal mengunggah foto. Pastikan ukuran file max 2MB.";
+      Swal.fire("Gagal", msg, "error");
     } finally {
       setUploading(null);
     }
@@ -69,285 +116,126 @@ export default function PeminjamanPage() {
     setIsModalOpen(true);
   };
 
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case "pending":
-        return {
-          bg: "bg-amber-50",
-          text: "text-amber-700",
-          border: "border-amber-200",
-          icon: "bi-clock-history",
-          label: "Menunggu",
-        };
-      case "approved":
-        return {
-          bg: "bg-blue-50",
-          text: "text-blue-700",
-          border: "border-blue-200",
-          icon: "bi-check-circle-fill",
-          label: "Disetujui",
-        };
-      case "ongoing":
-        return {
-          bg: "bg-indigo-50",
-          text: "text-indigo-700",
-          border: "border-indigo-200",
-          icon: "bi-hourglass-split",
-          label: "Berlangsung",
-        };
-      default:
-        return {
-          bg: "bg-slate-50",
-          text: "text-slate-700",
-          border: "border-slate-200",
-          icon: "bi-question-circle",
-          label: status,
-        };
-    }
-  };
+  const filteredList = useMemo(() => {
+    return list.filter((item) => {
+      const matchStatus =
+        activeTab === "ALL" || item.status?.toUpperCase() === activeTab;
+      if (!item.created_at) return matchStatus;
 
-  // Statistik
+      const itemDate = new Date(item.created_at).setHours(0, 0, 0, 0);
+      const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+      const end = endDate ? new Date(endDate).setHours(0, 0, 0, 0) : null;
+
+      if (start && itemDate < start) return false;
+      if (end && itemDate > end) return false;
+
+      return matchStatus;
+    });
+  }, [list, activeTab, startDate, endDate]);
+
+  const totalPages = Math.ceil(filteredList.length / itemsPerPage) || 1;
+
+  const paginatedList = useMemo(() => {
+    const offset = (currentPage - 1) * itemsPerPage;
+    return filteredList.slice(offset, offset + itemsPerPage);
+  }, [filteredList, currentPage]);
+
   const stats = useMemo(() => {
-    const pending = list.filter((item) => item.status === "pending").length;
-    const approved = list.filter((item) => item.status === "approved").length;
-    const ongoing = list.filter((item) => item.status === "ongoing").length;
-
-    return { total: list.length, pending, approved, ongoing };
+    return {
+      total: list.length,
+      menunggu: list.filter((item) => item.status === "pending").length,
+      disetujui: list.filter((item) => item.status === "approved").length,
+      berlangsung: list.filter((item) => item.status === "ongoing").length,
+      selesai: list.filter((item) => item.status === "selesai").length,
+      ditolak: list.filter((item) => item.status === "ditolak").length,
+      dipesan: 0,
+    };
   }, [list]);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-6">
-      {/* HEADER */}
-      {/* <SectionHeader
-        title="Peminjaman Aktif"
-        description="Kelola dan pantau status peminjaman alat laboratorium Anda"
-      /> */}
+    <PageLayout
+      pageTitle="Riwayat Peminjaman"
+      pageDescription="Pantau status validasi praktikum, unggah dokumen telemetri, dan kelola sasis logbook."
+    >
+      <div className="space-y-6">
+        <LoanStatsGrid stats={stats} />
 
-      {/* STATISTICS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                Total Aktif
-              </p>
-              <p className="text-2xl font-black text-blue-900 mt-1">
-                {stats.total}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-              <i className="bi bi-card-checklist text-white text-xl"></i>
-            </div>
+        <LoanFilterCard
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={(val) => {
+            setStartDate(val);
+            setCurrentPage(1);
+          }}
+          onEndDateChange={(val) => {
+            setEndDate(val);
+            setCurrentPage(1);
+          }}
+          onClear={() => {
+            setStartDate("");
+            setEndDate("");
+            setCurrentPage(1);
+          }}
+        />
+
+        <LoanStatusTabs
+          tabs={TABS_LIST}
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setCurrentPage(1);
+          }}
+          listData={list}
+        />
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-28 gap-3 bg-white dark:bg-zinc-900/10 rounded-4xl border-2 border-zinc-950 dark:border-zinc-800">
+            <Loader2 className="animate-spin h-7 w-7 text-zinc-900 dark:text-zinc-50" />
+            <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono font-black uppercase tracking-widest">
+              Sinkronisasi Berkas Peminjaman...
+            </p>
           </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">
-                Menunggu
-              </p>
-              <p className="text-2xl font-black text-amber-900 mt-1">
-                {stats.pending}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
-              <i className="bi bi-clock-history text-white text-xl"></i>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                Disetujui
-              </p>
-              <p className="text-2xl font-black text-emerald-900 mt-1">
-                {stats.approved}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center">
-              <i className="bi bi-check-circle-fill text-white text-xl"></i>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                Berlangsung
-              </p>
-              <p className="text-2xl font-black text-indigo-900 mt-1">
-                {stats.ongoing}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
-              <i className="bi bi-hourglass-split text-white text-xl"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CONTENT */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4 bg-white rounded-3xl border-2 border-slate-100">
-          <div className="animate-spin h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
-          <p className="text-slate-400 font-semibold text-sm">
-            Memuat data peminjaman...
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {list.length > 0 ? (
-            list.map((item: any) => {
-              const statusConfig = getStatusConfig(item.status);
-
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => handleCardClick(item)}
-                  className="group bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-100 transition-all hover:shadow-xl hover:border-indigo-300 cursor-pointer relative overflow-hidden active:scale-[0.99]"
-                >
-                  {/* Gradient Background Hover Effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/0 to-indigo-50/0 group-hover:from-indigo-50/50 group-hover:to-purple-50/50 transition-all pointer-events-none rounded-3xl"></div>
-
-                  <div className="relative flex flex-col lg:flex-row justify-between gap-6">
-                    {/* LEFT SECTION */}
-                    <div className="flex-1 space-y-4">
-                      {/* BADGES */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded-full">
-                          <i className="bi bi-hash text-xs"></i>
-                          <span className="text-xs font-bold">{item.id}</span>
-                        </div>
-                        <div>Approved by : {item.penerima?.name}</div>
-                        <div
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
-                        >
-                          <i className={`bi ${statusConfig.icon} text-xs`}></i>
-                          <span className="text-xs font-bold">
-                            {statusConfig.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* LAB & PURPOSE */}
-                      <div>
-                        <h3 className="text-xl font-black text-slate-900 mb-1">
-                          {item.ruangan_lab || "Laboratorium"}
-                        </h3>
-                        <p className="text-sm text-slate-600 italic">
-                          <i className="bi bi-quote text-slate-400"></i>{" "}
-                          {item.tujuan_penggunaan}
-                        </p>
-                      </div>
-
-                      {/* ITEMS LIST */}
-                      <div className="flex flex-wrap gap-2">
-                        {item.details?.map((det: any) => (
-                          <div
-                            key={det.id}
-                            className="inline-flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                          >
-                            <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                            <span className="text-xs font-semibold text-slate-700">
-                              {det.alat?.nama_alat}
-                            </span>
-                            <span className="text-xs font-black text-indigo-600">
-                              ×{det.jumlah_pinjam}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* RIGHT SECTION */}
-                    <div className="flex flex-col justify-between items-end min-w-[200px] space-y-4">
-                      {/* DATE */}
-                      <div className="text-right">
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                          Diajukan Pada
-                        </p>
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
-                          <i className="bi bi-calendar-event text-slate-600"></i>
-                          <p className="text-sm font-bold text-slate-700">
-                            {item.created_at
-                              ? new Date(item.created_at).toLocaleDateString(
-                                  "id-ID",
-                                  {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  },
-                                )
-                              : "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* ACTION BUTTON */}
-                      <div
-                        className="w-full"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {item.status === "approved" ? (
-                          <label
-                            className={`w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm font-bold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 cursor-pointer ${uploading === item.id ? "opacity-50 pointer-events-none" : ""}`}
-                          >
-                            {uploading === item.id ? (
-                              <>
-                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                                <span>Mengunggah...</span>
-                              </>
-                            ) : (
-                              <>
-                                <i className="bi bi-camera-fill text-lg"></i>
-                                <span>Ambil & Foto Alat</span>
-                              </>
-                            )}
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleFileChange(item.id, e)}
-                            />
-                          </label>
-                        ) : (
-                          <button className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
-                            <span>Lihat Detail</span>
-                            <i className="bi bi-arrow-right group-hover:translate-x-1 transition-transform"></i>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+        ) : (
+          <div className="space-y-6">
+            {paginatedList.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 animate-in fade-in duration-200">
+                  {paginatedList.map((item) => (
+                    <LoanCard
+                      key={item.id}
+                      item={item}
+                      uploading={uploading}
+                      onCardClick={handleCardClick}
+                      onFileChange={handleFileChange}
+                    />
+                  ))}
                 </div>
-              );
-            })
-          ) : (
-            <div className="text-center py-32 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border-2 border-dashed border-slate-200">
-              <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i className="bi bi-clipboard-x text-4xl text-slate-400"></i>
-              </div>
-              <h3 className="text-xl font-black text-slate-400 mb-2">
-                Tidak Ada Peminjaman Aktif
-              </h3>
-              <p className="text-sm text-slate-500">
-                Semua peminjaman Anda sudah selesai atau belum ada pengajuan
-              </p>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* MODAL */}
-      <DetailPeminjamanModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        data={selectedData}
-      />
-    </div>
+                <LoanPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </>
+            ) : (
+              <div className="text-center py-24 bg-zinc-50/50 dark:bg-zinc-950/20 rounded-4xl border-2 border-dashed border-zinc-200 dark:border-zinc-800/80">
+                <div className="w-14 h-14 bg-white dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-800 rounded-xl flex items-center justify-center mx-auto mb-4 text-zinc-400 dark:text-zinc-600 shadow-sm">
+                  <ClipboardX size={24} />
+                </div>
+                <h3 className="text-xs font-mono font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
+                  Data Tidak Ditemukan
+                </h3>
+              </div>
+            )}
+          </div>
+        )}
+
+        <DetailPeminjamanModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          data={selectedData}
+        />
+      </div>
+    </PageLayout>
   );
 }

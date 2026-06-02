@@ -5,7 +5,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { MapLabPage } from "./pages/MapPage";
 import { Dashboard } from "./pages/DashboardPage";
 import { SettingPage } from "./pages/SettingPage";
-import { DeviceManagement } from "./pages/DevicePage";
+import { DevicePage } from "./pages/DevicePage";
 import { AppLayout } from "./layouts/AppLayout/layouts";
 import { HistoryPage } from "./pages/HistoryPage";
 import { AlatTable } from "./pages/ManajemenPage/ManajemenInventoryPage";
@@ -14,7 +14,7 @@ import GuestRoute from "./routes/GuestRoute";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { NotFoundPage } from "./pages/NotFoundPage/NotFoundPage";
 import { ProtectedNotFoundPage } from "./routes/ProtectedNotFoundPage";
-import { ClassPage } from "./pages/ClassPage/ClassPage";
+
 import { RiwayatPeminjamanAlat } from "./pages/Staff/RiwayatPeminjamanAlat/RiwayatPeminjamanAlat";
 import { RiwayatPeminjamanRuangPage } from "./pages/Staff/RiwayatPeminjamanRuang/RiwayatPeminjamanRuangPage";
 import { LaporanKerusakanPage } from "./pages/Staff/LaporanKerusakan/LaporanKerusakanPage";
@@ -26,6 +26,7 @@ import { RiwayatPeminjamanAlatPage } from "./pages/Mahasiswa/Riwayat Peminjaman 
 import { RiwayatPenggunaanRuangPage } from "./pages/Mahasiswa/Riwayat Penggunaan Ruang/RiwayatPenggunaanRuangPage";
 import PengajuanPeminjamanPage from "./pages/Mahasiswa/Pengajuan Pinjam Alat/PengajuanPinjamAlatPage";
 import PengembalianAlatPage from "./pages/Mahasiswa/Pengembalian/PengembalianAlatPage";
+import { ClassPage } from "./pages/ClassPage/ClassPage";
 
 function App() {
   return (
@@ -45,15 +46,15 @@ function App() {
 
         <Route
           element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
+            // <ProtectedRoute>
+            <AppLayout />
+            // </ProtectedRoute>
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/map" element={<MapLabPage />} />
           <Route path="/settings" element={<SettingPage />} />
-          <Route path="/device-management" element={<DeviceManagement />} />
+          <Route path="/device-management" element={<DevicePage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/alat" element={<AlatTable />} />
           <Route

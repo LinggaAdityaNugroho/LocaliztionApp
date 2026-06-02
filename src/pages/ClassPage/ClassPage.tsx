@@ -1,31 +1,83 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { RandomPickerCard } from "../../components/organism/RandomPickerCard";
+import { GroupGeneratorCard } from "../../components/organism/GroupGeneratorCard";
+import { StudentCard } from "../../components/molecules/StudentCard";
+import { Users, Grid, Loader2 } from "lucide-react";
+import { PageLayout } from "../../layouts/PageLayout";
+
+interface Student {
+  id: number;
+  nama: string;
+  name: string;
+  nim: string;
+  kelas?: string;
+}
 
 export function ClassPage() {
-  const [user, setUser] = useState<any>(null);
-  const [classmates, setClassmates] = useState<any[]>([]);
+  const [user, setUser] = useState<Student | null>(null);
+  const [classmates, setClassmates] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // random 1 orang
-  const [selected, setSelected] = useState<any>(null);
+  const [selected, setSelected] = useState<Student | null>(null);
+  const [isPicking, setIsPicking] = useState(false);
 
-  // random kelompok
   const [groupCount, setGroupCount] = useState(3);
-  const [groups, setGroups] = useState<any[][]>([]);
+  const [groups, setGroups] = useState<Student[][]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // 🔥 fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [userRes, classRes] = await Promise.all([
-          api.get("/user"),
-          api.get("/classmates"),
-        ]);
+        let currentClass = "";
+        let token = localStorage.getItem("token");
+        const authStorage = localStorage.getItem("auth");
 
-        setUser(userRes.data);
-        setClassmates(classRes.data);
+        if (authStorage) {
+          const parsedAuth = JSON.parse(authStorage);
+          const userData = parsedAuth.user || parsedAuth;
+          setUser(userData);
+          currentClass = userData?.kelas || "";
+        }
+
+        if (!token && authStorage) {
+          token = JSON.parse(authStorage)?.token || null;
+        }
+
+        const classRes = await api.get("/mahasiswa", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const allStudents = classRes.data?.data || classRes.data || [];
+
+        if (
+          currentClass &&
+          Array.isArray(allStudents) &&
+          allStudents.length > 0
+        ) {
+          const kelasUserNormalized = currentClass
+            .trim()
+            .toLowerCase()
+            .replace(/[- ]/g, "");
+
+          const sameClassmates = allStudents.filter((student) => {
+            if (!student.kelas) return false;
+
+            const kelasMhsNormalized = student.kelas
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replace(/[- ]/g, "");
+
+            return kelasMhsNormalized === kelasUserNormalized;
+          });
+
+          setClassmates(sameClassmates);
+        } else {
+          setClassmates(Array.isArray(allStudents) ? allStudents : []);
+        }
       } catch (err) {
-        console.error("Error ambil data:", err);
+        console.error("Gagal memuat ekosistem kelas:", err);
       } finally {
         setLoading(false);
       }
@@ -34,120 +86,123 @@ export function ClassPage() {
     fetchData();
   }, []);
 
-  // 🎯 random 1 orang
-  const randomPick = () => {
+  const handleRandomPick = () => {
     if (!classmates.length) return;
+    setIsPicking(true);
 
-    const rand = classmates[Math.floor(Math.random() * classmates.length)];
+    let counter = 0;
+    const interval = setInterval(() => {
+      const randomUser =
+        classmates[Math.floor(Math.random() * classmates.length)];
+      setSelected(randomUser);
+      counter++;
 
-    setSelected(rand);
+      if (counter > 12) {
+        clearInterval(interval);
+        setIsPicking(false);
+      }
+    }, 70);
   };
 
-  // 🎯 random kelompok
-  const generateGroups = () => {
+  const handleGenerateGroups = () => {
     if (!classmates.length) return;
+    setIsGenerating(true);
 
-    // shuffle
-    const shuffled = [...classmates].sort(() => Math.random() - 0.5);
+    setTimeout(() => {
+      const shuffled = [...classmates].sort(() => Math.random() - 0.5);
+      const result: Student[][] = Array.from(
+        { length: Math.max(1, groupCount) },
+        () => [],
+      );
 
-    const result: any[][] = Array.from({ length: groupCount }, () => []);
+      shuffled.forEach((student, index) => {
+        result[index % groupCount].push(student);
+      });
 
-    // bagi rata
-    shuffled.forEach((student, index) => {
-      result[index % groupCount].push(student);
-    });
-
-    setGroups(result);
+      setGroups(result);
+      setIsGenerating(false);
+    }, 400);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-950 dark:text-zinc-100" />
+        <p className="text-[10px] font-mono font-black tracking-widest text-zinc-400 uppercase">
+          Sinkronisasi Data Kelas
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
-      {/* USER INFO */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h1 className="text-2xl font-bold">{user?.name}</h1>
-        <p className="text-gray-500">Kelas: {user?.kelas}</p>
-      </div>
-
-      {/* RANDOM 1 ORANG */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="font-bold mb-4">🎯 Random 1 Orang</h2>
-
-        <button
-          onClick={randomPick}
-          className="bg-indigo-600 text-white px-6 py-2 rounded"
-        >
-          Pilih Acak
-        </button>
-
-        {selected && (
-          <div className="mt-4 p-4 bg-green-100 rounded">
-            🎉 Terpilih: <b>{selected.name}</b> ({selected.nim_nip})
+    <PageLayout
+      pageTitle="Ruang Kelas"
+      pageDescription="Manajemen data rekan sejawat, pembagian kelompok praktikum otomatis, dan pengundian acak mahasiswa."
+    >
+      <div className="py-6 w-full space-y-8 antialiased text-left bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
+        <div className="relative overflow-hidden bg-zinc-950 dark:bg-zinc-900 p-6 lg:p-8 text-white border-2 border-zinc-950 dark:border-zinc-800  group">
+          <div className="absolute right-0 bottom-0 translate-x-12 translate-y-12 opacity-5 pointer-events-none transition-transform duration-700 group-hover:scale-105">
+            <Users size={280} />
           </div>
-        )}
-      </div>
-
-      {/* RANDOM KELOMPOK */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="font-bold mb-4">👥 Random Kelompok</h2>
-
-        <div className="flex gap-2 mb-4">
-          <input
-            type="number"
-            min={1}
-            value={groupCount}
-            onChange={(e) => setGroupCount(Number(e.target.value))}
-            className="border px-3 py-2 rounded w-32"
-          />
-
-          <button
-            onClick={generateGroups}
-            className="bg-indigo-600 text-white px-4 py-2 rounded"
-          >
-            Generate
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {groups.map((group, i) => (
-            <div key={i} className="border rounded p-4">
-              <h3 className="font-bold mb-2">Kelompok {i + 1}</h3>
-
-              <ul className="space-y-1">
-                {group.map((student) => (
-                  <li key={student.id}>
-                    {student.name} ({student.nim_nip})
-                  </li>
-                ))}
-              </ul>
+          <div className="relative z-10 space-y-3">
+            <span className="text-[9px] bg-zinc-900 dark:bg-zinc-800 border border-zinc-800 text-zinc-300 px-3 py-1.5 font-mono font-black tracking-widest rounded-none uppercase">
+              Ruang Kelas
+            </span>
+            <h1 className="text-3xl font-black tracking-tight mt-1 font-mono">
+              {user?.name || "N/A"}
+            </h1>
+            <div className="flex items-center">
+              <p className="text-zinc-400 font-medium text-xs flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-zinc-100 animate-pulse" />
+                Kelas:{" "}
+                <span className="font-mono font-black text-white">
+                  {user?.kelas || "TIDAK TERDETEKSI"}
+                </span>
+              </p>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
 
-      {/* LIST CLASSMATES */}
-      <div className="bg-white shadow rounded-xl p-6">
-        <h2 className="font-bold mb-4">📋 Daftar Teman Kelas</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 w-full">
+          <div className="lg:col-span-2">
+            <RandomPickerCard
+              selected={selected}
+              isPicking={isPicking}
+              onPick={handleRandomPick}
+            />
+          </div>
+          <div className="lg:col-span-3">
+            <GroupGeneratorCard
+              groupCount={groupCount}
+              setGroupCount={setGroupCount}
+              groups={groups}
+              isGenerating={isGenerating}
+              onGenerate={handleGenerateGroups}
+            />
+          </div>
+        </div>
 
-        <ul className="space-y-2">
-          {classmates.map((item) => (
-            <li
-              key={item.id}
-              className="flex justify-between border p-3 rounded"
-            >
-              <span>{item.name}</span>
-              <span className="text-gray-400 text-sm">{item.nim_nip}</span>
-            </li>
-          ))}
-        </ul>
+        <section className="space-y-4 w-full">
+          <div className="flex items-center justify-between border-b-2 border-zinc-200 dark:border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Grid className="text-zinc-400 dark:text-zinc-600" size={16} />
+              <h2 className="text-sm font-mono font-black tracking-widest text-zinc-900 dark:text-zinc-200 ">
+                Daftar Teman Kelas{" "}
+                <span className="text-xs text-zinc-400 font-mono font-bold tracking-normal">
+                  ({classmates.length} Personel)
+                </span>
+              </h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full">
+            {classmates.map((item) => (
+              <StudentCard key={item.id} nama={item.nama} nim={item.nim} />
+            ))}
+          </div>
+        </section>
       </div>
-    </div>
+    </PageLayout>
   );
 }

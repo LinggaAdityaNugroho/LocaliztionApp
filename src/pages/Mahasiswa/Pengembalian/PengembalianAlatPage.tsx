@@ -1,13 +1,47 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
 import api from "../../../services/api";
+import Swal from "sweetalert2";
+import { Camera, PackageCheck, Loader2, Info, X, Check } from "lucide-react";
+
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../../../components/ui/select";
+import { Card } from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Label } from "../../../components/ui/label";
+import { Input } from "../../../components/ui/input";
+import { PageLayout } from "../../../layouts/PageLayout";
+
+type LoanDetail = {
+  id: number;
+  peminjaman_id: string;
+  alat_id: string;
+  jumlah_pinjam: string;
+  alat: {
+    id: number;
+    nama_alat: string;
+    letak: string;
+  };
+};
+
+type LoanItem = {
+  id: number;
+  ruangan_lab: string;
+  status: string;
+  tujuan_penggunaan?: string;
+  details: LoanDetail[];
+};
 
 export default function PengembalianAlatPage() {
-  const [activeLoans, setActiveLoans] = useState([]);
+  const [activeLoans, setActiveLoans] = useState<LoanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
 
-  // State Kamera
   const webcamRef = useRef<Webcam>(null);
   const [cameraActiveId, setCameraActiveId] = useState<number | null>(null);
 
@@ -24,11 +58,17 @@ export default function PengembalianAlatPage() {
     try {
       setLoading(true);
       const res = await api.get("/mahasiswa/riwayat-saya");
-      const rawData = res.data.data || [];
-      const ongoing = rawData.filter((item: any) => item.status === "ongoing");
+      const rawData = res.data?.data || res.data || [];
+
+      const ongoing = rawData.filter((item: any) => {
+        const currentStatus = item.status?.toLowerCase().trim();
+        return currentStatus === "berlangsung" || currentStatus === "disetujui";
+      });
+
       setActiveLoans(ongoing);
     } catch (err) {
-      console.error("Gagal mengambil data pinjaman");
+      console.error("Gagal mengambil data pinjaman alat:", err);
+      setActiveLoans([]);
     } finally {
       setLoading(false);
     }
@@ -38,33 +78,20 @@ export default function PengembalianAlatPage() {
     fetchActiveLoans();
   }, [fetchActiveLoans]);
 
-  // Fungsi Ambil Foto (Sama dengan Peminjaman)
-  const capture = useCallback(
-    (id: number) => {
-      const imageSrc = webcamRef.current?.getScreenshot();
-      if (imageSrc) {
-        // 1. Convert Base64 ke File/Blob untuk dikirim ke Backend
-        fetch(imageSrc)
-          .then((res) => res.blob())
-          .then((blob) => {
-            const file = new File([blob], `return_photo_${id}.jpg`, {
-              type: "image/jpeg",
-            });
-
-            setFormData((prev) => ({
-              ...prev,
-              [id]: {
-                ...(prev[id] || { kondisi: "baik", catatan: "" }),
-                file: file,
-                preview: imageSrc, // Simpan string base64 untuk preview di UI
-              },
-            }));
-            setCameraActiveId(null); // Tutup kamera setelah jepret
-          });
-      }
-    },
-    [webcamRef],
-  );
+  const capture = useCallback((id: number) => {
+    const imageSrc = webcamRef.current?.getScreenshot();
+    if (imageSrc) {
+      setFormData((prev) => ({
+        ...prev,
+        [id]: {
+          ...(prev[id] || { kondisi: "baik", catatan: "" }),
+          file: null,
+          preview: imageSrc,
+        },
+      }));
+      setCameraActiveId(null);
+    }
+  }, []);
 
   const handleInputChange = (id: number, field: string, value: any) => {
     setFormData((prev) => ({
@@ -83,25 +110,43 @@ export default function PengembalianAlatPage() {
 
   const handleReturn = async (id: number) => {
     const data = formData[id];
-    if (!data?.file) return alert("⚠️ Wajib ambil foto bukti pengembalian!");
+
+    if (!data?.preview) {
+      return Swal.fire(
+        "Dokumentasi Wajib",
+        "Harap ambil foto bukti kondisi alat sebelum mengembalikan!",
+        "warning",
+      );
+    }
     if (data.kondisi === "rusak" && !data.catatan.trim()) {
-      return alert("⚠️ Catatan wajib diisi jika kondisi alat Rusak.");
+      return Swal.fire(
+        "Catatan Diperlukan",
+        "Deskripsi kerusakan alat wajib diisi.",
+        "warning",
+      );
     }
 
     setSubmittingId(id);
-    const body = new FormData();
-    body.append("foto_after", data.file);
-    body.append("kondisi_kembali", data.kondisi);
-    body.append("deskripsi_kerusakan", data.catatan);
+
+    const payload = {
+      foto_after_base64: data.preview,
+      kondisi_kembali: data.kondisi,
+      deskripsi_kerusakan: data.catatan,
+    };
 
     try {
-      await api.post(`/peminjaman/${id}/kembalikan`, body, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await api.post(`/peminjaman/${id}/kembalikan`, payload);
+
+      Swal.fire({
+        title: "Pengembalian Berhasil",
+        text: "Alat praktikum telah diserahkan kembali.",
+        icon: "success",
+        confirmButtonColor: "#18181b",
       });
-      alert("✅ Alat berhasil dikembalikan!");
       fetchActiveLoans();
     } catch (err) {
-      alert("❌ Gagal memproses pengembalian.");
+      console.error(err);
+      Swal.fire("Gagal", "Terjadi kendala saat memproses peminjaman.", "error");
     } finally {
       setSubmittingId(null);
     }
@@ -117,106 +162,167 @@ export default function PengembalianAlatPage() {
   }, [activeLoans]);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-6">
-      {/* STATS ... (tetap sama) */}
+    <PageLayout
+      pageTitle="Pengembalian Alat"
+      pageDescription="Selesaikan peminjaman mandiri dengan melampirkan kondisi fisik akhir inventaris praktikum."
+    >
+      <div className="py-6 w-full space-y-8 antialiased text-left bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
+        <div className=" pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+          <div className="flex gap-3 text-right self-start sm:self-center">
+            <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-800 px-4 h-11 flex flex-col justify-center rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+              <p className="text-xs font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-widest ">
+                Berkas Aktif
+              </p>
+              <p className="text-sm font-mono font-black text-zinc-900 dark:text-white">
+                {stats.total} LOG
+              </p>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-800 px-4 h-11 flex flex-col justify-center rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+              <p className="text-xs font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-widest ">
+                Total Item
+              </p>
+              <p className="text-sm font-mono font-black text-zinc-900 dark:text-white">
+                {stats.totalAlat} UNIT
+              </p>
+            </div>
+          </div>
+        </div>
 
-      {loading ? (
-        <div className="py-32 flex flex-col items-center justify-center">
-          <div className="animate-spin h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full mb-4"></div>
-          <p>Memuat data...</p>
-        </div>
-      ) : activeLoans.length === 0 ? (
-        <div className="text-center py-32 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-          <i className="bi bi-emoji-smile text-4xl text-emerald-500 mb-4 block"></i>
-          <h3 className="font-black text-slate-400 uppercase tracking-widest">
-            Semua Aman!
-          </h3>
-        </div>
-      ) : (
-        <div className="grid gap-6">
-          {activeLoans.map((item: any) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden"
-            >
-              <div className="flex flex-col lg:flex-row">
-                {/* INFO ALAT */}
-                <div className="lg:w-1/2 p-8 bg-slate-900 text-white">
-                  <div className="flex justify-between mb-6">
-                    <span className="bg-indigo-600 px-3 py-1 rounded-lg text-xs font-black tracking-widest uppercase">
-                      ID: {item.id}
-                    </span>
-                    <span className="text-xs text-slate-400 uppercase font-bold tracking-widest">
-                      Lab: {item.ruangan_lab}
-                    </span>
+        {loading ? (
+          <div className="py-32 flex flex-col items-center justify-center gap-3 w-full">
+            <Loader2
+              className="animate-spin text-zinc-950 dark:text-zinc-50"
+              size={28}
+            />
+            <p className="text-xs font-mono font-black tracking-widest text-zinc-400 ">
+              Menyinkronkan Log Berkas
+            </p>
+          </div>
+        ) : activeLoans.length === 0 ? (
+          <div className="text-center py-24 bg-white dark:bg-zinc-900 border-2 border-dashed border-zinc-300 dark:border-zinc-800 p-8 rounded-none w-full">
+            <div className="w-12 h-12 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 mx-auto mb-4 rounded-none shadow-none">
+              <PackageCheck size={20} />
+            </div>
+            <h3 className="font-mono font-black text-zinc-800 dark:text-zinc-200 tracking-widest text-sm ">
+              Semua Tanggungan Aman
+            </h3>
+            <p className="text-zinc-400 dark:text-zinc-500 text-xs mt-1.5 font-medium max-w-xs mx-auto">
+              Kamu tidak memiliki pinjaman alat laboratorium yang berstatus
+              aktif saat ini.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-8 w-full">
+            {activeLoans.map((item: any) => (
+              <Card
+                key={item.id}
+                variant="brutal"
+                animate={false}
+                className="p-0 border-2 border-zinc-950 dark:border-zinc-800 rounded-none overflow-hidden flex flex-col lg:flex-row py-0 w-full shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none"
+              >
+                <div className="lg:w-1/2 p-6 lg:p-8 bg-zinc-950 text-white flex flex-col justify-between border-b-2 lg:border-b-0 lg:border-r-2 border-zinc-950">
+                  <div>
+                    <div className="flex justify-between items-center pb-4 border-b border-zinc-900">
+                      <span className="bg-white text-zinc-900 font-mono text-[9px] font-black px-2.5 py-1.5 rounded-none tracking-widest border border-white ">
+                        ID REG: #{item.id}
+                      </span>
+                      <span className="text-sm text-zinc-100 font-mono font-black tracking-wider ">
+                        Ruangan: {item.ruangan_lab || "LAB BARAT"}
+                      </span>
+                    </div>
+
+                    <h3 className="text-xs font-mono font-black mt-6 mb-4 tracking-widest text-zinc-400 ">
+                      Inventaris Pinjaman
+                    </h3>
+                    <div className="space-y-2">
+                      {item.details?.map((det: any) => (
+                        <div
+                          key={det.id}
+                          className="flex justify-between p-3.5 bg-zinc-900 border border-zinc-800 rounded-none items-center"
+                        >
+                          <span className="font-black text-xs tracking-wide text-zinc-200 ">
+                            {det.alat?.nama_alat || "Item Inventaris"}
+                          </span>
+                          <span className="text-white font-mono font-black text-xs bg-zinc-950 px-2.5 py-1 rounded-none border border-zinc-800">
+                            QTY: {det.jumlah_pinjam}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 p-4 bg-zinc-900 border border-zinc-800 rounded-none text-left">
+                      <p className="text-xs font-mono font-black text-zinc-400 tracking-widest ">
+                        Keperluan Praktikum
+                      </p>
+                      <p className="text-xs text-zinc-200 font-medium mt-1">
+                        "{item.tujuan_penggunaan || "Tidak melampirkan alasan"}"
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-black mb-6 uppercase tracking-tight italic">
-                    Daftar Alat Yang Dipinjam:
-                  </h3>
-                  <div className="space-y-3">
-                    {item.details?.map((det: any) => (
-                      <div
-                        key={det.id}
-                        className="flex justify-between p-4 bg-white/5 rounded-2xl border border-white/10"
-                      >
-                        <span className="font-bold">{det.alat?.nama_alat}</span>
-                        <span className="text-indigo-400 font-black">
-                          x{det.jumlah_pinjam}
-                        </span>
-                      </div>
-                    ))}
+
+                  <div className="mt-8 pt-4 border-t border-zinc-900 flex items-center gap-4 text-xs font-medium text-zinc-400 leading-normal text-left">
+                    <Info size={14} className="shrink-0 text-white" />
+                    <span>
+                      Harap foto alat dalam posisi rapi di meja pengembalian
+                      sebelum mengirim berkas laporan pemakaian ruang.
+                    </span>
                   </div>
                 </div>
 
-                {/* FORM PENGEMBALIAN */}
-                <div className="lg:w-1/2 p-8 bg-white space-y-6">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      1. Dokumentasi Kamera
-                    </label>
+                <div className="lg:w-1/2 p-6 lg:p-8 bg-white dark:bg-zinc-900 space-y-5 flex flex-col justify-between transition-colors">
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-xs font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-widest  pl-0.5">
+                      Ambil Bukti Pengembalian
+                    </Label>
 
                     {cameraActiveId === item.id ? (
-                      // TAMPILAN LIVE KAMERA
-                      <div className="relative w-full h-64 rounded-[2rem] overflow-hidden bg-black shadow-2xl border-2 border-indigo-500">
+                      <div className="relative w-full h-64 rounded-none overflow-hidden bg-black border-2 border-zinc-950 dark:border-zinc-800 shadow-inner">
                         <Webcam
                           audio={false}
                           ref={webcamRef}
                           screenshotFormat="image/jpeg"
                           videoConstraints={{ facingMode: "environment" }}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover grayscale"
                         />
-                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-                          <button
+                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3 z-20">
+                          <Button
+                            type="button"
+                            variant="brutal"
+                            size="sm"
+                            className="bg-red-500 text-white h-9 w-9 px-0 flex items-center justify-center rounded-none shadow-none"
                             onClick={() => setCameraActiveId(null)}
-                            className="p-3 bg-red-500 text-white rounded-full"
                           >
-                            <i className="bi bi-x-lg"></i>
-                          </button>
-                          <button
+                            <X size={14} />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="brutal"
+                            size="sm"
+                            className="rounded-none h-9 px-4 font-mono font-black text-xs tracking-wider "
                             onClick={() => capture(item.id)}
-                            className="px-6 py-2 bg-white text-slate-900 font-black rounded-full uppercase text-[10px] tracking-widest shadow-lg"
                           >
-                            Ambil Foto
-                          </button>
+                            <Camera size={13} />
+                          </Button>
                         </div>
                       </div>
                     ) : (
-                      // PREVIEW ATAU TOMBOL BUKA KAMERA
                       <div
                         onClick={() => setCameraActiveId(item.id)}
-                        className="w-full h-52 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:bg-indigo-50/50 transition-all overflow-hidden"
+                        className="w-full h-52 bg-zinc-50 dark:bg-zinc-950 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-none flex flex-col items-center justify-center cursor-pointer hover:border-zinc-950 dark:hover:border-zinc-400 transition-all overflow-hidden group"
                       >
                         {formData[item.id]?.preview ? (
                           <img
                             src={formData[item.id].preview!}
-                            className="w-full h-full object-cover"
-                            alt="Preview"
+                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all"
+                            alt="Preview Jepretan"
                           />
                         ) : (
                           <>
-                            <i className="bi bi-camera-fill text-3xl text-indigo-500 mb-2"></i>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              Klik Untuk Foto Alat
+                            <div className="w-10 h-10 bg-white dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-800 rounded-none flex items-center justify-center text-zinc-900 dark:text-white shadow-none mb-3 group-hover:scale-105 transition-transform">
+                              <Camera size={15} />
+                            </div>
+                            <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 tracking-widest font-mono  text-center px-4 leading-normal">
+                              Klik area untuk menyalakan kamera dokumentasi
                             </span>
                           </>
                         )}
@@ -224,51 +330,78 @@ export default function PengembalianAlatPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                        2. Kondisi
-                      </label>
-                      <select
-                        onChange={(e) =>
-                          handleInputChange(item.id, "kondisi", e.target.value)
+                  <div className="grid grid-cols-2 gap-4 text-left">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-widest  pl-0.5">
+                        Kondisi Alat
+                      </Label>
+                      <Select
+                        value={formData[item.id]?.kondisi || "baik"}
+                        onValueChange={(val) =>
+                          handleInputChange(item.id, "kondisi", val)
                         }
-                        className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 text-xs font-bold focus:border-indigo-500 outline-none"
                       >
-                        <option value="baik">✅ BAIK</option>
-                        <option value="rusak">⚠️ RUSAK</option>
-                      </select>
+                        <SelectTrigger className="w-full h-11 bg-white dark:bg-zinc-950 border-2 border-zinc-950 dark:border-zinc-800 rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none font-mono font-black text-xs text-zinc-900 dark:text-zinc-100  tracking-wide">
+                          <SelectValue placeholder="Pilih Kondisi Alat" />
+                        </SelectTrigger>
+                        <SelectContent className="border-2 border-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 font-mono font-black text-xs  text-zinc-800 dark:text-zinc-200 rounded-none shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none">
+                          <SelectItem
+                            value="baik"
+                            className="cursor-pointer rounded-none"
+                          >
+                            Kondisi Baik
+                          </SelectItem>
+                          <SelectItem
+                            value="rusak"
+                            className="cursor-pointer rounded-none"
+                          >
+                            Kondisi Rusak
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                        3. Catatan
-                      </label>
-                      <input
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-widest  pl-0.5">
+                        Catatan Tambahan
+                      </Label>
+                      <Input
                         type="text"
-                        placeholder="Misal: Aman"
+                        placeholder="Lengkap"
                         onChange={(e) =>
                           handleInputChange(item.id, "catatan", e.target.value)
                         }
-                        className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 text-xs font-bold outline-none"
+                        className="w-full h-11 border-2 border-zinc-950 dark:border-zinc-800 bg-white dark:bg-zinc-950 font-mono text-xs font-black tracking-wide rounded-none shadow-none focus-visible:ring-0  placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                       />
                     </div>
                   </div>
 
-                  <button
+                  <Button
+                    type="button"
                     onClick={() => handleReturn(item.id)}
                     disabled={submittingId === item.id}
-                    className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 transition-all active:scale-95 disabled:bg-slate-300"
+                    className="w-full h-12 "
+                    color="green"
+                    variant="brutal"
                   >
-                    {submittingId === item.id
-                      ? "PROSES..."
-                      : "SELESAIKAN PENGEMBALIAN"}
-                  </button>
+                    {submittingId === item.id ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="animate-spin h-4 w-4" />
+                        <span>Memproses Pengembalian...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <Check size={14} />
+                        <span>Selesaikan Restitusi</span>
+                      </div>
+                    )}
+                  </Button>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </PageLayout>
   );
 }

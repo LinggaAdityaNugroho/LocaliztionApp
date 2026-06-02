@@ -1,11 +1,10 @@
-import type { ColumnDef } from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Button } from "../../../components/ui/button";
 import {
   ArrowUpDown,
   Image as ImageIcon,
   Tag,
   Clock,
-  User as UserIcon,
   AlertTriangle,
 } from "lucide-react";
 import { Separator } from "../../../components/ui/separator";
@@ -19,34 +18,31 @@ export const getColumns = (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+        className="text-[10px] font-mono font-black tracking-wider text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-none transition-all"
       >
-        ID <ArrowUpDown className="ml-2 h-3 w-3" />
+        ID <ArrowUpDown className="ml-1.5 h-3 w-3" />
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-bold text-slate-400 ml-2">
+      <span className="font-mono text-xs font-black text-zinc-400 dark:text-zinc-500 ml-3">
         #{row.getValue("id")}
       </span>
     ),
   },
   {
     accessorKey: "user.name",
-    header: "Peminjam",
+    header: "Nama",
     cell: ({ row }) => {
       const nama_mahasiswa = row.original.nama_mahasiswa;
       const nim_mahasiswa = row.original.nim_mahasiswa;
       return (
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200">
-            <UserIcon size={14} />
-          </div>
+        <div className="flex items-center gap-3 py-1 text-left">
           <div>
-            <div className="font-bold text-slate-900 text-sm leading-none mb-1">
+            <div className="font-mono font-black text-zinc-900 dark:text-zinc-100 text-xs tracking-tight">
               {nama_mahasiswa || "N/A"}
             </div>
-            <div className="text-[10px] text-slate-500 font-medium tracking-wide">
-              NIM: {nim_mahasiswa}
+            <div className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 font-bold tracking-wide mt-0.5">
+              NIM: {nim_mahasiswa || "---"}
             </div>
           </div>
         </div>
@@ -60,15 +56,15 @@ export const getColumns = (
       const nama_alat = row.original.nama_alat;
       const kode_tag = row.original.kode_tag;
       return (
-        <div className="space-y-2 max-w-[220px]">
-          <div className="flex flex-wrap gap-1">
-            <p className="text-[11px] font-bold text-indigo-700 leading-tight">
+        <div className="space-y-2 max-w-[220px] py-1 text-left">
+          <div>
+            <p className="text-xs font-sans font-black text-zinc-900 dark:text-zinc-100 leading-tight">
               {nama_alat}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 bg-indigo-50/50 px-2 py-1 rounded-md border border-indigo-100 w-fit">
-            <Tag size={10} className="text-indigo-500 shrink-0" />
-            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-tight tabular-nums">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 px-2.5 py-1 rounded-none   w-fit">
+            <Tag size={10} className="text-zinc-400" />
+            <span className="text-xs font-mono font-black text-zinc-800 dark:text-zinc-200 tracking-wider">
               {kode_tag}
             </span>
           </div>
@@ -76,7 +72,6 @@ export const getColumns = (
       );
     },
   },
-
   {
     id: "dokumentasi",
     header: "Dokumentasi",
@@ -90,30 +85,28 @@ export const getColumns = (
       ];
 
       return (
-        <div className="flex  gap-3">
+        <div className="flex gap-3 py-1 justify-start">
           {images.map((img, idx) => (
             <div key={idx} className="group relative">
-              {/* Label melayang saat hover */}
-              <span className="absolute -top-3 left-0 text-[7px] font-black uppercase text-slate-400 tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute -top-3.5 left-0.5 text-[7px] font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                 {img.label}
               </span>
 
               {img.url ? (
                 <div
-                  className="h-12 w-12 rounded-xl border-2 border-white shadow-sm overflow-hidden cursor-zoom-in ring-1 ring-slate-200 hover:ring-indigo-500 hover:scale-110 transition-all bg-slate-100"
+                  className="h-12  w-24 rounded-none border-2 border-zinc-950 dark:border-zinc-800 bg-white cursor-pointer transition-all relative overflow-hidden shrink-0"
                   onClick={() => setSelectedImg(img.url!)}
                 >
                   <img
                     src={img.url}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all duration-200"
                     alt={img.label}
                     loading="lazy"
                   />
                 </div>
               ) : (
-                /* Tampilan jika foto kosong/null */
-                <div className="h-12 w-12 rounded-xl bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center">
-                  <ImageIcon size={14} className="text-slate-300" />
+                <div className="h-10 w-14 rounded-none bg-white dark:bg-zinc-950 border-2 border-dashed border-zinc-300 dark:border-zinc-800 flex items-center justify-center text-zinc-400 shrink-0 shadow-none">
+                  <ImageIcon size={13} />
                 </div>
               )}
             </div>
@@ -122,13 +115,12 @@ export const getColumns = (
       );
     },
   },
-
   {
     accessorKey: "detail_kerusakan",
     header: "Detail Kerusakan",
     cell: ({ row }) => {
       const deskripsi_kerusakan = row.original.deskripsi_kerusakan;
-      const tgl_kembali = row.original.tanggal_kembali;
+      const tgl_kembali = row.original.waktu_kembali;
 
       const formatDateTime = (dateString: any) => {
         if (!dateString) return "-";
@@ -149,37 +141,34 @@ export const getColumns = (
       };
 
       return (
-        <div className="flex flex-col gap-3 min-w-[250px] p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
-          {/* Header: Judul Kerusakan with Warning Accent */}
+        <div className="flex flex-col gap-3 min-w-[260px] p-4 bg-white dark:bg-zinc-900 border-2 border-zinc-950 dark:border-zinc-800 transition-all text-left">
           <div className="flex items-start gap-3">
-            {/* Visual Warning Icon */}
-            <div className="p-2 bg-red-100 rounded-lg text-red-600 group-hover:scale-110 transition-transform">
-              <AlertTriangle size={20} className="stroke-[2.5]" />
+            <div className="p-2 bg-red-50 dark:bg-red-950/20 border-2 border-zinc-950 dark:border-zinc-800 text-red-500 rounded-none shrink-0 shadow-none">
+              <AlertTriangle size={15} />
             </div>
 
             <div className="flex flex-col gap-0.5 flex-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-red-700">
-                Deskripsi Kendala
+              <span className="text-[9px] font-mono font-black tracking-widest text-red-500">
+                Deskripsi kendala
               </span>
-              <h2 className="text-sm font-semibold text-slate-900 leading-tight">
-                {deskripsi_kerusakan || "Tidak ada deskripsi"}
+              <h2 className="text-xs font-sans font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                {deskripsi_kerusakan || "Tidak ada deskripsi kerusakan"}
               </h2>
             </div>
           </div>
 
-          <Separator className="bg-red-100/50" />
+          <Separator className="bg-zinc-200 dark:bg-zinc-800 h-0.5" />
 
-          {/* Footer: Time with Subtle Accent */}
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-slate-500 font-medium">
-              <div className="p-1 bg-red-100 rounded-md">
-                <Clock size={12} className="text-red-500" />
+            <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 font-medium">
+              <div className="p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-none">
+                <Clock size={11} className="text-zinc-400" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[9px] text-red-400 font-medium leading-none">
+                <span className="text-[8px] text-zinc-400 font-mono font-black tracking-wider leading-none">
                   Dilaporkan pada
                 </span>
-                <span className="leading-tight text-xs text-slate-700">
+                <span className="leading-tight text-[11px] font-mono font-bold text-zinc-700 dark:text-zinc-300 mt-0.5">
                   {formatDateTime(tgl_kembali)}
                 </span>
               </div>

@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { cn } from "./../../../lib/utils";
 import Webcam from "react-webcam";
 import {
   useReactTable,
@@ -14,51 +13,44 @@ import {
   Cpu,
   Camera,
   ArrowLeft,
-  Camera as CameraIcon,
-  Trash2,
-  Plus,
-  Minus,
   CheckCircle2,
   ShoppingCart,
-  RefreshCw,
 } from "lucide-react";
 
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { Textarea } from "../../../components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
+import { PageLayout } from "../../../layouts/PageLayout";
 import { InventoryTable } from "../../../components/organism/Table/InventoryTable";
 import { LabGroupCard } from "../../../components/molecules/LabGroupCard";
 import { CartDrawer } from "../../../components/organism/CartDrawer";
+import { CartItemList } from "../../../components/organism/CartItemList";
+import { CheckoutFormStep } from "../../../components/organism/CheckoutFormStep";
+
 import api from "../../../services/api";
+import { Badge } from "../../../components/ui/badge";
+import Swal from "sweetalert2";
+import { LoanPagination } from "../../../components/organism/LoanPagination";
 
 const LAB_GROUPS = [
   {
     name: "Gedung Elektronika",
     icon: Activity,
-    color: "from-blue-600 to-indigo-800",
+    color: "from-zinc-700 to-zinc-900",
   },
   {
     name: "Gedung Telekomunikasi",
     icon: Network,
-    color: "from-orange-500 to-red-700",
+    color: "from-zinc-800 to-black",
   },
   {
     name: "Gedung UPT Bahasa",
     icon: Cpu,
-    color: "from-purple-600 to-fuchsia-800",
+    color: "from-zinc-600 to-zinc-800",
   },
   {
     name: "Gedung Magister Terapan",
     icon: Camera,
-    color: "from-pink-600 to-rose-800",
+    color: "from-zinc-500 to-zinc-700",
   },
 ];
 
@@ -104,6 +96,9 @@ export default function PengajuanPinjamAlatPage() {
   const [captchaInput, setCaptchaInput] = useState("");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
+
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
 
   const generateCaptcha = useCallback(() => {
     const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -153,27 +148,49 @@ export default function PengajuanPinjamAlatPage() {
   const handleCheckout = async () => {
     const isBooking = startTime !== "";
     if (!isFormStep) return setIsFormStep(true);
-    if (!targetRoom) return alert("Pilih ruangan lab!");
-    if (!tujuan.trim()) return alert("Isi tujuan penggunaan!");
-    if (!imageFile) return alert("Ambil foto kondisi alat terlebih dahulu!");
+
+    if (!targetRoom)
+      return Swal.fire(
+        "Form Kosong",
+        "Silakan tentukan ruangan lab tujuan.",
+        "warning",
+      );
+    if (!tujuan.trim())
+      return Swal.fire(
+        "Form Kosong",
+        "Tujuan penggunaan wajib diisi.",
+        "warning",
+      );
+    if (!imageFile)
+      return Swal.fire(
+        "Foto Diperlukan",
+        "Harap ambil foto kondisi fisik alat.",
+        "warning",
+      );
     if (captchaInput.toUpperCase() !== captchaString)
-      return alert("Kode Captcha salah!");
+      return Swal.fire("Validasi Gagal", "Kode Captcha salah.", "error");
 
     if (!isBooking && !imageFile) {
-      return alert("Harap ambil foto kondisi alat untuk peminjaman langsung!");
+      return Swal.fire(
+        "Foto Diperlukan",
+        "Foto kondisi fisik wajib dilampirkan untuk peminjaman langsung.",
+        "warning",
+      );
     }
 
     if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
-      return alert("Jam selesai harus lebih besar dari jam mulai!");
+      return Swal.fire(
+        "Waktu Tidak Valid",
+        "Jam selesai harus di atas jam waktu mulai pemesanan.",
+        "warning",
+      );
     }
 
     const formData = new FormData();
     formData.append("ruangan_lab", targetRoom);
     formData.append("tujuan", tujuan);
     formData.append("foto_before", imageFile);
-
-    if (imageFile) formData.append("foto_before", imageFile);
-    formData.append("waktu_mulai", startTime); // Kosong = Pinjam Sekarang
+    formData.append("waktu_mulai", startTime);
     formData.append("waktu_selesai", endTime);
 
     const itemsPayload = cart.map((i) => ({
@@ -191,64 +208,74 @@ export default function PengajuanPinjamAlatPage() {
       });
 
       if (response.status === 201 || response.status === 200) {
-        alert("✅ Pengajuan Berhasil!");
+        Swal.fire(
+          "Pengajuan Sukses",
+          "Berkas peminjaman dikirim ke koordinator laboratorium.",
+          "success",
+        );
         setCart([]);
         setIsCartOpen(false);
         window.location.reload();
       }
     } catch (err: any) {
-      alert(
-        `❌ Gagal: ${err.response?.data?.message || "Terjadi kesalahan server"}`,
+      Swal.fire(
+        "Gagal",
+        err.response?.data?.message || "Terjadi kendala pada server internal.",
+        "error",
       );
     } finally {
       setLoading(false);
     }
   };
 
+  const totalPages = Math.ceil(alatList.length / itemsPerPage) || 1;
   const columns = useMemo<ColumnDef<Alat>[]>(
     () => [
       {
-        header: "NAMA ALAT",
+        header: "Nama Alat",
         cell: ({ row }) => (
           <div className="py-2">
-            <div className="font-black text-slate-900 uppercase italic text-xs">
+            <div className="font-sans font-black text-zinc-900 dark:text-zinc-100 text-xs tracking-tight ">
               {row.original.nama_alat}
             </div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              {row.original.letak}
+            <div className="text-xs text-zinc-400 dark:text-zinc-500 font-bold tracking-wider mt-0.5 ">
+              Ruangan: {row.original.letak}
             </div>
           </div>
         ),
       },
       {
-        header: "STOK",
+        header: "Stok",
         cell: ({ row }) => (
           <Badge
-            variant="secondary"
-            className="font-black text-[10px] bg-emerald-50 text-emerald-700 border-emerald-100"
+            variant="outline"
+            className="font-mono font-black text-[10px] bg-zinc-50 text-zinc-800 border-zinc-950 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none "
           >
-            {row.original.jumlah} UNIT
+            {row.original.jumlah} Unit
           </Badge>
         ),
       },
       {
-        header: "AKSI",
+        header: "Aksi",
         id: "actions",
         cell: ({ row }) => {
           const isAdded = cart.some((i) => i.id === row.original.id);
           return (
             <Button
               size="sm"
-              disabled={row.original.jumlah <= 0 || isAdded}
+              disabled={row.original.jumlah <= 0}
+              variant={isAdded ? "outline" : "brutal"}
+              color={isAdded ? "green" : "blue"}
               onClick={() => addToCart(row.original)}
-              className={cn(
-                "rounded-xl font-bold text-[10px] h-9 px-5",
-                isAdded
-                  ? "bg-emerald-500 hover:bg-emerald-600"
-                  : "bg-indigo-600",
-              )}
             >
-              {isAdded ? <CheckCircle2 className="w-4 h-4 mr-1" /> : "PINJAM"}
+              {isAdded ? (
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Masuk Keranjang</span>
+                </div>
+              ) : (
+                "Pinjam"
+              )}
             </Button>
           );
         },
@@ -260,7 +287,13 @@ export default function PengajuanPinjamAlatPage() {
   const table = useReactTable({
     data: alatList,
     columns,
-    state: { globalFilter },
+    state: {
+      globalFilter,
+      pagination: {
+        pageIndex: currentPage - 1,
+        pageSize: itemsPerPage,
+      },
+    },
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -268,347 +301,115 @@ export default function PengajuanPinjamAlatPage() {
   });
 
   return (
-    <div className="container max-w-7xl py-10 space-y-10 min-h-screen">
-      {/* ... Header & Lab Groups tetap sama ... */}
-      <header className="flex flex-col md:flex-row justify-between items-end gap-6 border-b pb-8">
-        {selectedGroup && (
-          <Input
-            placeholder="Cari alat..."
-            className="max-w-xs rounded-2xl h-12 bg-white shadow-inner border-2 focus-visible:ring-indigo-500"
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-          />
-        )}
-      </header>
-
-      {!selectedGroup ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {LAB_GROUPS.map((lab) => (
-            <LabGroupCard
-              key={lab.name}
-              {...lab}
-              onClick={() => handleSelectGroup(lab.name)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Button
-            variant="ghost"
-            onClick={() => setSelectedGroup(null)}
-            className="font-black text-indigo-600 uppercase tracking-widest text-xs hover:bg-indigo-50"
-          >
-            <ArrowLeft className="mr-2 w-4 h-4" /> Kembali ke Katalog
-          </Button>
-          <div className="overflow-hidden p-2">
-            <InventoryTable table={table} loading={loading} columnsCount={2} />
+    <PageLayout
+      pageTitle="Katalog Alat Laboratorium"
+      pageDescription="Pilih kluster gedung, tentukan kode perangkat telemetri, dan isi formulir pemesanan praktikum."
+    >
+      <div className="py-6 w-full  space-y-10 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900 text-left">
+        {!selectedGroup ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-full px-1 sm:px-0 ">
+            {LAB_GROUPS.map((lab) => (
+              <LabGroupCard
+                key={lab.name}
+                {...lab}
+                onClick={() => handleSelectGroup(lab.name)}
+              />
+            ))}
           </div>
-        </div>
-      )}
-
-      {cart.length > 0 && (
-        <Button
-          onClick={() => {
-            setIsCartOpen(true);
-            setIsFormStep(false);
-          }}
-          className="fixed bottom-10 right-10 h-20 px-10 rounded-[2.5rem] shadow-2xl bg-slate-900 hover:scale-105 transition-all z-50 group border-b-4 border-indigo-600"
-        >
-          <div className="relative mr-4 bg-white/10 p-3 rounded-2xl">
-            <ShoppingCart className="text-indigo-400" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900 font-black italic text-white">
-              {cart.length}
-            </span>
-          </div>
-          <span className="font-black uppercase tracking-[0.2em] text-sm italic text-white">
-            Review & Pinjam
-          </span>
-        </Button>
-      )}
-
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={setIsCartOpen}
-        isFormStep={isFormStep}
-        cartCount={cart.length}
-        onNext={handleCheckout}
-        loading={loading}
-      >
-        {/* WRAPPER SCROLL AREA */}
-        <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar space-y-6">
-          {!isFormStep ? (
-            <div className="space-y-4">
-              {cart.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-5 bg-slate-50 rounded-4xl border-2 border-slate-100 space-y-4"
-                >
-                  <div className="flex justify-between">
-                    <span className="font-black uppercase italic text-xs text-slate-700">
-                      {item.nama_alat}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setCart(cart.filter((c) => c.id !== item.id))
-                      }
-                    >
-                      <Trash2
-                        size={16}
-                        className="text-red-400 hover:text-red-600 transition-colors"
-                      />
-                    </button>
-                  </div>
-                  {item.is_aset ? (
-                    <div className="space-y-2">
-                      {item.selected_tags.map((tag, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <Select
-                            value={tag}
-                            onValueChange={(v) => {
-                              const newTags = [...item.selected_tags];
-                              newTags[idx] = v;
-                              setCart(
-                                cart.map((c) =>
-                                  c.id === item.id
-                                    ? { ...c, selected_tags: newTags }
-                                    : c,
-                                ),
-                              );
-                            }}
-                          >
-                            <SelectTrigger className="rounded-xl h-10 text-[10px] font-bold">
-                              <SelectValue placeholder="Pilih Kode Unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {item.kode_tag_list?.map((t) => (
-                                <SelectItem key={t} value={t}>
-                                  {t}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {item.selected_tags.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                const newTags = item.selected_tags.filter(
-                                  (_, i) => i !== idx,
-                                );
-                                setCart(
-                                  cart.map((c) =>
-                                    c.id === item.id
-                                      ? { ...c, selected_tags: newTags }
-                                      : c,
-                                  ),
-                                );
-                              }}
-                            >
-                              <Minus size={14} className="text-red-500" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full rounded-xl border-dashed border-2 text-[10px] font-black"
-                        onClick={() =>
-                          setCart(
-                            cart.map((c) =>
-                              c.id === item.id
-                                ? {
-                                    ...c,
-                                    selected_tags: [...c.selected_tags, ""],
-                                  }
-                                : c,
-                            ),
-                          )
-                        }
-                      >
-                        <Plus className="w-3 h-3 mr-1" /> TAMBAH UNIT
-                      </Button>
-                    </div>
-                  ) : (
-                    <Input
-                      type="number"
-                      min="1"
-                      max={item.jumlah}
-                      value={item.qty}
-                      onChange={(e) =>
-                        setCart(
-                          cart.map((c) =>
-                            c.id === item.id
-                              ? { ...c, qty: parseInt(e.target.value) }
-                              : c,
-                          ),
-                        )
-                      }
-                      className="h-10 rounded-xl font-bold"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-6 pb-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
-                  Lokasi Penggunaan
-                </label>
-                <Select onValueChange={setTargetRoom}>
-                  <SelectTrigger className="h-14 rounded-2xl border-2">
-                    <SelectValue placeholder="Pilih Ruangan Lab" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RUANGAN_SPESIFIK.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
-                  Tujuan Penggunaan
-                </label>
-                <Textarea
-                  placeholder="Contoh: Praktikum Antena"
-                  rows={3}
-                  className="rounded-2xl border-2"
-                  value={tujuan}
-                  onChange={(e) => setTujuan(e.target.value)}
-                />
-              </div>
-
-              <div className="p-5 bg-indigo-50/50 rounded-[2rem] border-2 border-indigo-100/50 space-y-3">
-                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1 block italic leading-none">
-                  Jadwal Pemesanan{" "}
-                  <span className="text-slate-400">(Opsional)</span>:
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <p className="text-[8px] font-bold text-slate-400 uppercase ml-1">
-                      Mulai / Booking:
-                    </p>
-                    <input
-                      type="datetime-local"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      onClick={(e) => e.currentTarget.showPicker()}
-                      className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 shadow-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[8px] font-bold text-slate-400 uppercase ml-1">
-                      Estimasi Selesai:
-                    </p>
-                    <input
-                      type="datetime-local"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      onClick={(e) => e.currentTarget.showPicker()}
-                      className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 shadow-sm"
-                    />
-                  </div>
-                </div>
-                {!startTime && (
-                  <p className="text-[8px] text-amber-600 font-bold italic ml-1">
-                    * Kosongkan jika ingin meminjam langsung (sekarang).
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">
-                  Foto Kondisi Alat
-                </label>
-                {!showCamera ? (
-                  <div
-                    onClick={() => setShowCamera(true)}
-                    className="h-44 bg-slate-50 border-2 border-dashed rounded-4xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 overflow-hidden transition-all"
-                  >
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <>
-                        <CameraIcon className="text-indigo-500 mb-2" />
-                        <span className="text-[10px] font-bold uppercase text-slate-400">
-                          Ambil Foto
-                        </span>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="relative h-64 rounded-4xl overflow-hidden shadow-xl border-2 border-indigo-100">
-                    <Webcam
-                      ref={webcamRef}
-                      screenshotFormat="image/jpeg"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute bottom-4 inset-x-0 flex justify-center gap-3">
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="rounded-full shadow-lg"
-                        onClick={() => setShowCamera(false)}
-                      >
-                        Batal
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="rounded-full bg-white text-black hover:bg-slate-200 shadow-lg"
-                        onClick={capture}
-                      >
-                        Jepret
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* CAPTCHA SECTION */}
-              <div className="space-y-3 p-4 bg-indigo-50/50 rounded-3xl border-2 border-indigo-100">
-                <label className="text-[10px] font-black uppercase text-indigo-400 ml-1">
-                  Verifikasi Keamanan
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-white h-12 rounded-2xl flex items-center justify-center border-2 border-slate-200 select-none tracking-[0.4em] font-black italic text-lg text-indigo-600 shadow-sm">
-                    {captchaString}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={generateCaptcha}
-                    className="rounded-2xl h-12 w-12 border-2 hover:bg-white transition-all"
-                  >
-                    <RefreshCw className="w-4 h-4 text-indigo-500" />
-                  </Button>
-                </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300 w-full ">
+            <div className="flex items-center justify-between">
+              <Button variant="brutal" onClick={() => setSelectedGroup(null)}>
+                <ArrowLeft className="mr-1.5 w-4 h-4" /> Kembali ke Katalog
+                Utama
+              </Button>
+              {selectedGroup && (
                 <Input
-                  placeholder="Ketik kode di atas..."
-                  className="h-12 rounded-2xl border-2 text-center font-bold uppercase tracking-widest focus-visible:ring-indigo-500 bg-white"
-                  value={captchaInput}
-                  onChange={(e) =>
-                    setCaptchaInput(e.target.value.toUpperCase())
-                  }
+                  placeholder="Cari nama alat laboratorium..."
+                  className="max-w-xs h-11 bg-white dark:bg-zinc-950 font-medium text-xs border border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-900 rounded-none shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] dark:shadow-none"
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
                 />
-                {captchaInput && captchaInput !== captchaString && (
-                  <p className="text-[9px] text-red-500 font-black uppercase text-center animate-pulse">
-                    Kode tidak cocok!
-                  </p>
-                )}
-              </div>
+              )}
             </div>
+            <InventoryTable table={table} loading={loading} columnsCount={3} />
+            <div className="w-full flex justify-center pt-2">
+              <LoanPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </div>
+        )}
+
+        {cart.length > 0 && (
+          <Button
+            onClick={() => {
+              setIsCartOpen(true);
+              setIsFormStep(false);
+            }}
+            variant={"brutal"}
+            className="fixed bottom-8 right-8 h-16 px-4 z-40 group shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] dark:shadow-none rounded-none"
+          >
+            <div className="relative bg-white/10 dark:bg-black/10 p-2">
+              <ShoppingCart size={16} />
+              <span className="absolute -top-1.5 -right-1.5 bg-zinc-900 dark:bg-zinc-50 border border-white dark:border-zinc-900 text-[9px] w-5 h-5 flex items-center justify-center font-mono font-black text-white dark:text-zinc-900 shadow-sm">
+                {cart.length}
+              </span>
+            </div>
+          </Button>
+        )}
+
+        <CartDrawer
+          isOpen={isCartOpen}
+          onClose={setIsCartOpen}
+          isFormStep={isFormStep}
+          cartCount={cart.length}
+          onNext={handleCheckout}
+          loading={loading}
+        >
+          {!isFormStep ? (
+            <CartItemList
+              cart={cart}
+              onRemove={(id) => setCart(cart.filter((c) => c.id !== id))}
+              onUpdateTags={(id, newTags) =>
+                setCart(
+                  cart.map((c) =>
+                    c.id === id ? { ...c, selected_tags: newTags } : c,
+                  ),
+                )
+              }
+              onUpdateQty={(id, newQty) =>
+                setCart(
+                  cart.map((c) => (c.id === id ? { ...c, qty: newQty } : c)),
+                )
+              }
+            />
+          ) : (
+            <CheckoutFormStep
+              targetRoom={targetRoom}
+              setTargetRoom={setTargetRoom}
+              tujuan={tujuan}
+              setTujuan={setTujuan}
+              startTime={startTime}
+              setStartTime={setStartTime}
+              endTime={endTime}
+              setEndTime={setEndTime}
+              showCamera={showCamera}
+              setShowCamera={setShowCamera}
+              imagePreview={imagePreview}
+              webcamRef={webcamRef}
+              onCapture={capture}
+              captchaString={captchaString}
+              captchaInput={captchaInput}
+              setCaptchaInput={setCaptchaInput}
+              onRefreshCaptcha={generateCaptcha}
+              rooms={RUANGAN_SPESIFIK}
+            />
           )}
-        </div>
-      </CartDrawer>
-    </div>
+        </CartDrawer>
+      </div>
+    </PageLayout>
   );
 }

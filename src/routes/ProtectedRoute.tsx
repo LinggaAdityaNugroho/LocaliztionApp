@@ -26,21 +26,26 @@ export default function ProtectedRoute({
       }
 
       try {
-        const response = await api.get("/user");
+        const response = await api.get("/mahasiswa");
         setIsAuth(true);
-        // Pastikan backend kamu mengirim field 'role', jika tidak ada ganti ke 'user'
-        setUserRole(response.data.role || "user");
+
+        const role = (response.data.role || "user").toLowerCase().trim();
+        setUserRole(role);
+
+        localStorage.setItem("user", JSON.stringify(response.data));
       } catch (error: any) {
         console.error("Auth Error:", error);
 
-        // HANYA tendang ke login jika error 401 (Token kadaluarsa/salah)
         if (error.response?.status === 401) {
           localStorage.removeItem("token");
+          localStorage.removeItem("user");
           setIsAuth(false);
         } else {
-          // Jika error 500 atau koneksi Ngrok bermasalah,
-          // tetap izinkan masuk selama ada token di storage (opsional)
+          const backupUser = JSON.parse(localStorage.getItem("user") || "{}");
+          const backupRole = (backupUser?.role || "user").toLowerCase().trim();
+
           setIsAuth(true);
+          setUserRole(backupRole);
         }
       }
       setLoading(false);
@@ -49,12 +54,26 @@ export default function ProtectedRoute({
     checkAuth();
   }, []);
 
-  if (loading) return null;
+  if (loading) {
+    // Bisa kamu ganti dengan komponen spinner loading minimalis monokrom agar UX lebih mulus
+    return (
+      <div className="fixed inset-0 bg-white dark:bg-zinc-950 flex items-center justify-center">
+        <div className="animate-spin h-6 w-6 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   if (!isAuth) return <Navigate to="/" replace />;
 
-  if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
-    return <Navigate to="/dashboard" replace />;
+  // 🔥 PENYEMPURNAAN 3: Normalisasi array allowedRoles ke huruf kecil sebelum pengecekan (.includes)
+  if (allowedRoles && userRole) {
+    const normalizedAllowedRoles = allowedRoles.map((r) =>
+      r.toLowerCase().trim(),
+    );
+
+    if (!normalizedAllowedRoles.includes(userRole)) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return children ? children : <Outlet />;

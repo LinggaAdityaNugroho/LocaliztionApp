@@ -115,7 +115,6 @@ export function RiwayatPeminjamanAlatPage() {
         />
       </div>
 
-      {/* Toolbar: Search & Page Size */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <Input
@@ -125,7 +124,6 @@ export function RiwayatPeminjamanAlatPage() {
             className="max-w-xs rounded-xl border-slate-200 focus:ring-indigo-500"
           />
 
-          {/* 4. Dropdown Filter Status */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px] rounded-xl border-slate-200 font-medium text-sm">
               <SelectValue placeholder="Semua Status" />
@@ -169,17 +167,14 @@ export function RiwayatPeminjamanAlatPage() {
         </div>
       </div>
 
-      {/* Organism: Table */}
       <RiwayatPeminjamanAlatTable
         table={table}
         loading={loading}
         columnsCount={columns.length}
       />
 
-      {/* Molecule: Pagination */}
       <DevicePagination table={table} />
 
-      {/* Atom/Molecule: Image Lightbox */}
       {selectedImg && (
         <div
           className="fixed inset-0 z-9999 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-300"
